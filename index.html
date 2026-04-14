@@ -145,6 +145,14 @@
   .cat-pill{background:white;border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink-mid);font-family:'Heebo',sans-serif;white-space:nowrap;transition:all .15s;flex-shrink:0;}
   .cat-pill:hover{border-color:var(--olive-light);color:var(--olive);}
   .cat-pill.active{background:var(--olive);color:white;border-color:var(--olive);}
+  .login-overlay{display:none;position:fixed;inset:0;background:rgba(30,34,24,.6);z-index:500;align-items:center;justify-content:center;}
+  .login-overlay.open{display:flex;}
+  .login-box{background:white;border-radius:14px;padding:2rem;width:320px;direction:rtl;text-align:center;}
+  .login-box h3{font-size:17px;font-weight:700;margin-bottom:6px;color:var(--ink);}
+  .login-box p{font-size:13px;color:var(--ink-light);margin-bottom:1.2rem;}
+  .login-box input{width:100%;font-family:Heebo,sans-serif;font-size:15px;border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center;letter-spacing:3px;outline:none;direction:ltr;margin-bottom:10px;}
+  .login-box input:focus{border-color:var(--olive-light);}
+  .login-error{font-size:12px;color:var(--terracotta);margin-bottom:8px;min-height:16px;}
 </style>
 </head>
 <body>
@@ -158,10 +166,7 @@
   </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
-    <button class="tab-btn" onclick="showView('calendar')">יומן דדליינים</button>
-    <button class="tab-btn" onclick="showView('news')">חדשות</button>
-    <button class="tab-btn" onclick="showView('learning')">הזדמנויות למידה</button>
-    <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
+    <button class="tab-btn" onclick="requireAdmin(()=>showView('admin'))">+ הזנת קול קורא</button>
   </div>
 </nav>
 
@@ -248,9 +253,8 @@
   </div>
   <!-- Section selector -->
   <div style="display:flex;gap:8px;margin-bottom:1.5rem;">
-    <button class="ctab active" id="stab-grants" onclick="setAdminSection('grants')">קול קורא</button>
-    <button class="ctab" id="stab-news" onclick="setAdminSection('news')">חדשה</button>
-    <button class="ctab" id="stab-learning" onclick="setAdminSection('learning')">אירוע למידה</button>
+    <button class="ctab active" id="stab-grants" onclick="setAdminSection('grants')">הזנת קול קורא</button>
+    <button class="ctab" id="stab-learning" onclick="setAdminSection('learning')">הזנת אירוע למידה</button>
   </div>
 
   <div class="form-card">
@@ -290,6 +294,7 @@
           <div class="content-tabs">
             <button class="ctab active" onclick="switchTab('text')">הדבקת טקסט</button>
             <button class="ctab" onclick="switchTab('pdf')">העלאת PDF</button>
+            <button class="ctab" onclick="switchTab('url')">קישור URL</button>
           </div>
           <div class="ctab-panel active" id="tab-text">
             <textarea id="f-raw" style="min-height:120px;background:white;" placeholder="הדביקי כאן את תוכן הקול הקורא המלא — הוראות, קריטריונים, תנאי סף, מועדים וכו'. הAI יסכם אותו אוטומטית לפי הפורמט הקבוע."></textarea>
@@ -301,6 +306,12 @@
               <div class="pdf-fname" id="pdf-fname"></div>
             </div>
           </div>
+          <div class="ctab-panel" id="tab-url">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="url" id="f-url" placeholder="https://... הדביקי קישור לדף קול הקורא" style="flex:1;font-family:Heebo,sans-serif;font-size:14px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;background:white;color:var(--ink);outline:none;direction:ltr;">
+            </div>
+            <div style="font-size:12px;color:var(--ink-light);margin-top:6px;">הAI יביא את תוכן הדף ויסכם אותו אוטומטית</div>
+          </div>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <button class="btn-ai" id="btn-sum" onclick="runSummarize()">
               <span id="sum-label">✨ סכמי לפי הפורמט</span>
@@ -310,8 +321,8 @@
           </div>
           <div id="ai-result-area" style="display:none">
             <div class="ai-result-box">
-              <div class="ai-result-label">תצוגה מקדימה של הסיכום:</div>
-              <div class="ai-result-text" id="ai-result-text"></div>
+              <div class="ai-result-label">סיכום — ניתן לעריכה ידנית:</div>
+              <textarea id="ai-result-text" style="width:100%;min-height:220px;font-family:Heebo,sans-serif;font-size:13px;line-height:1.8;color:var(--ink);background:white;border:none;outline:none;resize:vertical;direction:rtl;padding:4px 0;" oninput="window._pendingSum=this.value"></textarea>
             </div>
           </div>
         </div>
@@ -456,6 +467,28 @@
   </div>
 </div>
 
+
+
+<div id="confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(30,34,24,.5);z-index:600;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:14px;padding:1.5rem;width:300px;direction:rtl;text-align:center;">
+    <div id="confirm-msg" style="font-size:15px;font-weight:500;margin-bottom:1.2rem;color:var(--ink);"></div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button onclick="confirmYes()" style="background:var(--terracotta);color:white;border:none;border-radius:8px;padding:9px 24px;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">מחק</button>
+      <button onclick="confirmNo()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:9px 20px;font-family:Heebo,sans-serif;font-size:14px;cursor:pointer;color:var(--ink-mid);">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <h3>🔒 כניסת אדמין</h3>
+    <p>הזיני סיסמה כדי לגשת לאזור ההזנה והעריכה</p>
+    <input type="password" id="login-input" placeholder="סיסמה" onkeydown="if(event.key==='Enter')checkLogin()">
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-primary" onclick="checkLogin()" style="width:100%">כניסה</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
   <div class="modal" id="modal-content"></div>
 </div>
@@ -563,10 +596,10 @@ function renderBoard(){
       <div class="summary-preview">${renderSummaryPreview(g.summary)}</div>
       <div class="grant-footer">
         ${(()=>{let parts=[];if(g.link)parts.push(`<a class="grant-link" href="${g.link}" target="_blank" onclick="event.stopPropagation()">🔗 לינק לקול הקורא</a>`);if(g.fileData)parts.push(`<a class="file-chip" href="${g.fileData}" download="${g.fileName||'קול_קורא'}" onclick="event.stopPropagation()">📎 ${g.fileName||'קובץ מקורי'}</a>`);return parts.join(' ')||'<span></span>';})()}
-        <div class="grant-actions" onclick="event.stopPropagation()">
-          <button class="btn-share" onclick="shareGrant(${g.id})">שיתוף ↗</button>
-          <button class="btn-icon" onclick="editGrant(${g.id})">עריכה</button>
-          <button class="btn-icon danger" onclick="deleteGrant(${g.id})">מחיקה</button>
+        <div class="grant-actions">
+          <button class="btn-share" onclick="event.stopPropagation();shareGrant(${g.id})">שיתוף ↗</button>
+          <button class="btn-icon" onclick="event.stopPropagation();editGrant(${g.id})">עריכה</button>
+          <button class="btn-icon danger" onclick="event.stopPropagation();deleteGrant(${g.id})">מחיקה</button>
         </div>
       </div>
     </div>`;
@@ -643,10 +676,14 @@ async function runSummarize(){
   const status=document.getElementById('sum-status');
   const area=document.getElementById('ai-result-area');
   const txt=document.getElementById('ai-result-text');
-  const activeTab=document.querySelector('#view-admin .ctab.active').getAttribute('onclick').includes('pdf')?'pdf':'text';
+  const activeCtab=document.querySelector('.ai-section .ctab.active');
+  const activeTabOnclick=activeCtab?activeCtab.getAttribute('onclick'):'';
+  const activeTab=activeTabOnclick.includes('pdf')?'pdf':activeTabOnclick.includes('url')?'url':'text';
   const raw=document.getElementById('f-raw').value.trim();
+  const urlVal=(document.getElementById('f-url')||{value:''}).value.trim();
   if(activeTab==='text'&&!raw){showToast('נא להדביק את תוכן הקול הקורא');return;}
   if(activeTab==='pdf'&&!pdfB64){showToast('נא להעלות PDF');return;}
+  if(activeTab==='url'&&!urlVal){showToast('נא להדביק קישור');return;}
   btn.disabled=true;lbl.style.display='none';spin.style.display='inline-block';
   status.textContent='מנתח ומסכם...';area.style.display='none';
   try{
@@ -656,6 +693,22 @@ async function runSummarize(){
         {type:'document',source:{type:'base64',media_type:'application/pdf',data:pdfB64}},
         {type:'text',text:PROMPT}
       ]}];
+    }else if(activeTab==='url'){
+      status.textContent='מביא תוכן מהדף...';
+      // Step 1: fetch page content via web_search
+      const fetchRes=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:2000,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          messages:[{role:'user',content:'גש לכתובת הבאה והחזר את הטקסט המלא שלה, ללא עיצוב: '+urlVal}]
+        })
+      });
+      const fetchData=await fetchRes.json();
+      const pageText=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
+      if(!pageText)throw new Error('לא הצלחתי לגשת לדף');
+      // Step 2: summarize the fetched content
+      messages=[{role:'user',content:PROMPT+'\n\n---\nURL המקור: '+urlVal+'\n\n'+pageText}];
     }else{
       messages=[{role:'user',content:PROMPT+'\n\n---\n'+raw}];
     }
@@ -689,7 +742,7 @@ async function runSummarize(){
       }
     }
     if(parsed.summary){
-      txt.textContent=parsed.summary;
+      txt.value=parsed.summary;
       area.style.display='block';
       window._pendingSum=parsed.summary;
     }
@@ -840,6 +893,179 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2800);
 }
 
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const view=document.getElementById('view-'+name);
+  if(view)view.classList.add('active');
+  const btn=document.querySelector('.tab-btn[onclick*="showView(\''+name+'\')"]') ||
+            document.querySelector('.tab-btn[onclick="showView(\''+name+'\')"]');
+  if(btn)btn.classList.add('active');
+  if(name==='board')renderBoard();
+  if(name==='admin'){
+    if(!window._editId)clearForm();
+    setAdminSection(window._adminSection||'grants');
+  }
+}
+
+function showAdminSection(sec){
+  showView('admin');
+  setAdminSection(sec);
+}
+
+function setAdminSection(sec){
+  window._adminSection=sec;
+  ['grants','learning'].forEach(s=>{
+    const tab=document.getElementById('stab-'+s);
+    if(tab)tab.classList.toggle('active',s===sec);
+  });
+  document.querySelectorAll('#view-admin .form-card').forEach(el=>{el.style.display='none';});
+  if(sec==='learning'){const el=document.getElementById('form-learning');if(el)el.style.display='block';}
+  else{const el=document.querySelector('#view-admin .form-card:not(#form-news):not(#form-learning)');if(el)el.style.display='block';}
+  const titles={grants:'הזנת קול קורא חדש',learning:'הזנת אירוע למידה חדש'};
+  document.getElementById('admin-title').textContent=titles[sec]||'הזנה';
+}
+
+function toggleOpenOnly(){
+  window._openOnly=!window._openOnly;
+  const btn=document.getElementById('filter-open');
+  if(btn){
+    btn.style.background=window._openOnly?'var(--olive)':'white';
+    btn.style.color=window._openOnly?'white':'var(--ink-mid)';
+    btn.style.borderColor=window._openOnly?'var(--olive)':'var(--border)';
+  }
+  renderBoard();
+}
+
+function setSort(s){
+  window._boardSort=s;
+  const dlBtn=document.getElementById('sort-deadline');
+  const nwBtn=document.getElementById('sort-new');
+  if(dlBtn){dlBtn.style.background=s==='deadline'?'var(--olive)':'white';dlBtn.style.color=s==='deadline'?'white':'var(--ink-mid)';dlBtn.style.borderColor=s==='deadline'?'var(--olive)':'var(--border)';}
+  if(nwBtn){nwBtn.style.background=s==='new'?'var(--olive)':'white';nwBtn.style.color=s==='new'?'white':'var(--ink-mid)';nwBtn.style.borderColor=s==='new'?'var(--olive)':'var(--border)';}
+  renderBoard();
+}
+
+
+function saveGrant(){
+  const title=document.getElementById('f-title').value.trim();
+  const org=document.getElementById('f-org').value.trim();
+  const deadline=document.getElementById('f-deadline').value;
+  if(!title||!org||!deadline){showToast('נא למלא שם, גוף מממן ותאריך הגשה');return;}
+  const grants=load();
+  const eid=window._editId;
+  const gd={
+    title,org,deadline,
+    cat:document.getElementById('f-cat').value,
+    amount:document.getElementById('f-amount').value,
+    link:document.getElementById('f-link').value.trim(),
+    notes:document.getElementById('f-notes').value.trim(),
+    summary:(document.getElementById('ai-result-text')||{value:''}).value.trim()||(eid?(grants.find(g=>g.id===eid)||{}).summary:null)||null,
+    fileData:window._grantFileData||(eid?(grants.find(g=>g.id===eid)||{}).fileData:null)||null,
+    fileName:window._grantFileName||(eid?(grants.find(g=>g.id===eid)||{}).fileName:null)||null
+  };
+  if(eid){
+    const i=grants.findIndex(g=>g.id===eid);
+    if(i>-1)grants[i]={...grants[i],...gd};
+    window._editId=null;
+  }else{
+    grants.push({id:Date.now(),...gd});
+  }
+  save(grants);
+  clearForm();
+  showToast(eid?'קול קורא עודכן ✓':'קול קורא נשמר ✓');
+  showView('board');
+}
+
+function editGrant(id){requireAdmin(()=>_editGrant(id));}
+function _editGrant(id){
+  const g=load().find(x=>x.id===id);if(!g)return;
+  showView('admin');
+  document.getElementById('admin-title').textContent='עריכת קול קורא';
+  window._editId=id;window._pendingSum=g.summary||null;
+  document.getElementById('f-title').value=g.title;
+  document.getElementById('f-org').value=g.org;
+  document.getElementById('f-deadline').value=g.deadline;
+  document.getElementById('f-cat').value=g.cat;
+  document.getElementById('f-amount').value=g.amount||'';
+  document.getElementById('f-link').value=g.link||'';
+  document.getElementById('f-notes').value=g.notes||'';
+  if(g.summary){
+    document.getElementById('ai-result-text').value=g.summary;
+    document.getElementById('ai-result-area').style.display='block';
+    document.getElementById('sum-status').textContent='סיכום קיים — ניתן לעדכן';
+  }
+  if(g.fileName){
+    document.getElementById('grant-file-name').textContent=g.fileName;
+    document.getElementById('grant-file-zone').style.borderColor='var(--olive-light)';
+    window._grantFileData=g.fileData;
+    window._grantFileName=g.fileName;
+  }
+}
+
+function deleteGrant(id){
+  showConfirm('האם למחוק קול קורא זה?', ()=>{
+    save(load().filter(g=>g.id!==id));
+    renderBoard();
+    showToast('קול קורא נמחק');
+  });
+}
+
+function clearForm(){
+  ['f-title','f-org','f-deadline','f-amount','f-link','f-raw','f-notes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  const fcat=document.getElementById('f-cat');if(fcat)fcat.selectedIndex=0;
+  const pfn=document.getElementById('pdf-fname');if(pfn)pfn.textContent='';
+  const ara=document.getElementById('ai-result-area');if(ara)ara.style.display='none';
+  const ss=document.getElementById('sum-status');if(ss)ss.textContent='';
+  const gfn=document.getElementById('grant-file-name');if(gfn)gfn.textContent='';
+  document.getElementById('admin-title').textContent='הזנת קול קורא חדש';
+  window._editId=null;window._pendingSum=null;pdfB64=null;
+  window._grantFileData=null;window._grantFileName=null;
+}
+
+
+// ======= ADMIN AUTH =======
+const ADMIN_PASS = 'funds';
+
+function requireAdmin(callback){
+  if(window._isAdmin){callback();return;}
+  document.getElementById('login-overlay').classList.add('open');
+  document.getElementById('login-input').value='';
+  document.getElementById('login-error').textContent='';
+  window._adminCallback=callback;
+  setTimeout(()=>document.getElementById('login-input').focus(),100);
+}
+
+function checkLogin(){
+  const val=document.getElementById('login-input').value;
+  if(val===ADMIN_PASS){
+    window._isAdmin=true;
+    document.getElementById('login-overlay').classList.remove('open');
+    if(window._adminCallback){window._adminCallback();window._adminCallback=null;}
+  }else{
+    document.getElementById('login-error').textContent='סיסמה שגויה, נסי שוב';
+    document.getElementById('login-input').value='';
+    document.getElementById('login-input').focus();
+  }
+}
+
+
+function showConfirm(msg, cb){
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-overlay').style.display='flex';
+  window._confirmCb=cb;
+}
+function confirmYes(){
+  document.getElementById('confirm-overlay').style.display='none';
+  if(window._confirmCb){window._confirmCb();window._confirmCb=null;}
+}
+function confirmNo(){
+  document.getElementById('confirm-overlay').style.display='none';
+  window._confirmCb=null;
+}
 document.addEventListener("DOMContentLoaded",function(){
   window._openOnly=false;
   renderBoard();
