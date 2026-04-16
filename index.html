@@ -953,19 +953,22 @@ function deleteLearning(id){
 }
 
 const LEARN_PROMPT=`אתה עוזר מקצועי לפיתוח משאבים בישראל.
-קיבלת תיאור של וובינר/הכשרה/אירוע מקצועי. החזר JSON בלבד (ללא markdown) עם המבנה הבא:
+קיבלת תיאור של וובינר/הכשרה/אירוע מקצועי. נתח אותו בקפידה וחלץ את הפרטים.
+החזר JSON בלבד (ללא markdown, ללא הסברים) עם המבנה הבא:
 
 {
-  "title": "שם האירוע",
-  "org": "שם המארגן",
-  "date": "YYYY-MM-DD",
-  "time": "HH:MM-HH:MM",
-  "format": "וובינר מקוון / כנס פיזי / הכשרה / סדנה / קורס / אחר",
-  "link": "https://...",
-  "summary": "🎓 תקציר מזמין ומקצועי בעברית 3-4 משפטים שמדגיש מה ילמדו ולמי מתאים"
+  "title": "שם האירוע/הסדרה",
+  "org": "שם המארגן (חפש: מי מזמין, מי מארגן, שם הארגון)",
+  "date": "YYYY-MM-DD (חפש תאריך בפורמט DD.MM.YYYY או דומה)",
+  "time": "HH:MM (חפש שעה בפורמט HH:MM)",
+  "format": "וובינר מקוון או כנס פיזי או הכשרה או סדנה — אם ZOOM/מקוון/אונליין אז 'וובינר מקוון', אם פיזי אז 'כנס פיזי'",
+  "link": "קישור להרשמה אם קיים",
+  "summary": "🎓 תקציר של 3-4 משפטים הכולל: מי המארגן, מתי ואיפה/איך (מקוון/פרונטלי), על מה ידברו, למי מתאים"
 }
 
-אם פרט לא מופיע — החזר null. החזר JSON בלבד ללא שום טקסט נוסף.`;
+דוגמה לסיכום טוב: 🎓 Atlas מזמינה למפגש פילנתרופי מקוון (ZOOM) בתאריך 27.4.2026 בשעה 11:00. במפגש תשתתף אודליה קרוצ'י, מנהלת קרן Ness, לשיחה על איך קרנות בוחנות הגשות. מתאים לגייסי משאבים ומנהלי עמותות.
+
+החזר JSON תקני בלבד.`;
 
 async function runSummarizeLearning(){
   const btn=document.getElementById('btn-lsum'),spin=document.getElementById('lsum-spin'),lbl=document.getElementById('lsum-label'),status=document.getElementById('lsum-status'),area=document.getElementById('l-result-area'),txt=document.getElementById('l-result-text');
