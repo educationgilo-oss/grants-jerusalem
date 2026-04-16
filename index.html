@@ -974,13 +974,35 @@ async function runSummarizeLearning(){
   const btn=document.getElementById('btn-lsum'),spin=document.getElementById('lsum-spin'),lbl=document.getElementById('lsum-label'),status=document.getElementById('lsum-status'),area=document.getElementById('l-result-area'),txt=document.getElementById('l-result-text');
   const raw=document.getElementById('l-raw').value.trim();
   if(!raw){showToast('נא להדביק תיאור האירוע');return;}
+  const apiKeyL=getApiKey();
+  if(!apiKeyL){showToast('נא להזין מפתח API');status.textContent='חסר מפתח API';return;}
   btn.disabled=true;lbl.style.display='none';spin.style.display='inline-block';status.textContent='מנסח...';area.style.display='none';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\n'+raw}]})});
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\n'+raw}]})});
     const data=await res.json();
-    const result=data.content?.map(c=>c.text||'').join('')||'';
+    if(data.error)throw new Error(data.error.message||'שגיאת API');
+    const result=(data.content||[]).map(c=>c.text||'').join('');
     if(!result)throw new Error('תגובה ריקה');
-    txt.textContent=result;area.style.display='block';status.textContent='✓ מוכן';window._pendingLearnSum=result;
+    // Parse JSON
+    let cleanResult=result.trim();
+    const objStart=cleanResult.indexOf('{');
+    const objEnd=cleanResult.lastIndexOf('}');
+    if(objStart>=0&&objEnd>objStart)cleanResult=cleanResult.slice(objStart,objEnd+1);
+    let parsed;
+    try{parsed=JSON.parse(cleanResult);}
+    catch(e){throw new Error('שגיאה בפרסור');}
+    // Fix time field
+    if(parsed.time)parsed.time=String(parsed.time).replace(/-?null$/,'').replace(/null/g,'').trim();
+    // Fill fields
+    if(parsed.title)document.getElementById('l-title').value=parsed.title;
+    if(parsed.org)document.getElementById('l-org').value=parsed.org;
+    if(parsed.date)document.getElementById('l-date').value=parsed.date;
+    if(parsed.time)document.getElementById('l-time').value=parsed.time;
+    if(parsed.link)document.getElementById('l-link').value=parsed.link;
+    if(parsed.format){const sel=document.getElementById('l-format');for(let i=0;i<sel.options.length;i++){if(sel.options[i].text===parsed.format||sel.options[i].value===parsed.format){sel.selectedIndex=i;break;}}}
+    if(parsed.summary){txt.textContent=parsed.summary;area.style.display='block';window._pendingLearnSum=parsed.summary;}
+    status.textContent='✓ הטופס מולא אוטומטית';
+    showToast('הטופס מולא אוטומטית ✓');
   }catch(err){status.textContent='שגיאה: '+err.message;}
   finally{btn.disabled=false;lbl.style.display='inline';spin.style.display='none';}
 }
