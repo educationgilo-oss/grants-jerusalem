@@ -166,7 +166,7 @@
   </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
-    <button class="tab-btn" onclick="requireAdmin(()=>showView('admin'))">+ הזנת קול קורא</button>
+    <button class="tab-btn" onclick="showView('admin')">+ הזנת קול קורא</button>
   </div>
 </nav>
 
@@ -991,8 +991,7 @@ function saveGrant(){
   showView('board');
 }
 
-function editGrant(id){requireAdmin(()=>_editGrant(id));}
-function _editGrant(id){
+function editGrant(id){
   const g=load().find(x=>x.id===id);if(!g)return;
   showView('admin');
   document.getElementById('admin-title').textContent='עריכת קול קורא';
