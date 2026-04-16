@@ -205,11 +205,17 @@
     <button id="sort-new" onclick="setSort('new')" style="font-family:Heebo,sans-serif;font-size:13px;border-radius:20px;padding:6px 16px;cursor:pointer;white-space:nowrap;background:white;color:var(--ink-mid);border:1px solid var(--border);">החדש ביותר שהועלה</button>
   </div>
   <div class="grants-list" id="grants-list"></div>
+
+  <!-- Upcoming learning events -->
+  <div id="learning-on-board" style="margin-top:2rem;">
+    <div style="font-size:18px;font-weight:700;margin-bottom:1rem;color:var(--ink);">אירועי למידה קרובים</div>
+    <div id="board-learning-list" class="grants-list"></div>
+  </div>
 </div>
 
 <div class="view" id="view-calendar">
   <div class="page-header">
-    <div><div class="page-title">יומן דדליינים</div><div class="page-sub">כל קולות הקוראים לפי תאריך הגשה</div></div>
+    <div><div class="page-title">יומן מועדים</div><div class="page-sub">כל קולות הקוראים לפי תאריך הגשה</div></div>
   </div>
   <div id="calendar-grid"></div>
 </div>
@@ -567,7 +573,7 @@ function renderStats(grants){
   const total=grants.filter(g=>g.amount).reduce((s,g)=>s+Number(g.amount),0);
   document.getElementById('stats-bar').innerHTML=`
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">קולות קוראים פעילים</div></div>
-    <div class="stat-card urgent"><div class="stat-num">${urgent.length}</div><div class="stat-label">דדליין ב-14 יום</div></div>
+    <div class="stat-card urgent"><div class="stat-num">${urgent.length}</div><div class="stat-label">מועד בקרוב</div></div>
     <div class="stat-card gold"><div class="stat-num">${total?'₪'+(total/1000000).toFixed(1)+'M':'—'}</div><div class="stat-label">פוטנציאל מימון</div></div>`;
   document.getElementById('board-sub').textContent=`${active.length} הזדמנויות פעילות`;
 }
@@ -587,6 +593,7 @@ function renderBoard(){
   else if(sort==='new')f.sort((a,b)=>b.id-a.id);
   const list=document.getElementById('grants-list');
   if(!f.length){list.innerHTML='<div class="empty-state">לא נמצאו קולות קוראים</div>';return;}
+  renderBoardLearning();
   list.innerHTML=f.map(g=>{
     const d=du(g.deadline),urg=d>=0&&d<=14;
     const dl=d<0?'פג תוקף':d===0?'היום!':d===1?'מחר!':`${d} ימים`;
@@ -617,6 +624,46 @@ function renderBoard(){
   }).join('');
 }
 
+
+
+function renderBoardLearning(){
+  const items=loadLearn()
+    .filter(i=>du(i.date)>=0)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date))
+    .slice(0,5);
+  const list=document.getElementById('board-learning-list');
+  const section=document.getElementById('learning-on-board');
+  if(!list)return;
+  if(!items.length){
+    if(section)section.style.display='none';
+    return;
+  }
+  if(section)section.style.display='block';
+  list.innerHTML=items.map(item=>{
+    const d=du(item.date);
+    const soon=d<=7;
+    return`<div class="grant-card${soon?' urgent-card':''}" onclick="openLearnModal(${item.id})" style="cursor:pointer;">
+      <div class="grant-card-top">
+        <div>
+          <div class="grant-title">${item.title}</div>
+          <div class="grant-org">${item.org||''}</div>
+          <div class="grant-badges">
+            <span class="badge badge-cat">${item.format||''}</span>
+            ${item.summary?'<span class="badge badge-ai">✨ סוכם</span>':''}
+          </div>
+        </div>
+        <div class="grant-deadline">
+          <span class="days${soon?'':' ok'}">${d===0?'היום!':d===1?'מחר!':d+' ימים'}</span>
+          <span style="color:var(--ink-light)"> | ${fmtD(item.date)}${item.time?' | '+item.time:''}</span>
+        </div>
+      </div>
+      ${item.summary?`<div class="summary-preview" style="margin-top:10px;font-size:13px;color:var(--ink-mid);line-height:1.7">${item.summary.slice(0,120)}...</div>`:''}
+      <div class="grant-footer">
+        ${item.link?`<a class="grant-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">🔗 הרשמה</a>`:'<span></span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function renderCalendar(){
   const grants=load().filter(g=>du(g.deadline)>=0).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
@@ -843,6 +890,7 @@ function renderLearning(){
       <div class="grant-footer">
         ${item.link?`<a class="grant-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">🔗 הרשמה</a>`:'<span></span>'}
         <div class="grant-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
           <button class="btn-icon danger" onclick="deleteLearning(${item.id})">מחיקה</button>
         </div>
       </div>
@@ -868,12 +916,56 @@ function openLearnModal(id){
   document.getElementById('modal-overlay').classList.add('open');
 }
 
+function editLearning(id){
+  const item=loadLearn().find(x=>x.id===id);if(!item)return;
+  window._editLearnId=id;
+  window._adminSection='learning';
+  window._pendingLearnSum=item.summary||null;
+  // Show the admin view with learning section
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const view=document.getElementById('view-admin');
+  if(view)view.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  // Show learning form directly
+  document.querySelectorAll('#view-admin .form-card').forEach(el=>{el.style.display='none';});
+  const lf=document.getElementById('form-learning');
+  if(lf)lf.style.display='block';
+  ['grants','learning'].forEach(s=>{const t=document.getElementById('stab-'+s);if(t)t.classList.toggle('active',s==='learning');});
+  document.getElementById('admin-title').textContent='עריכת אירוע למידה';
+  // Fill fields directly - form is now visible
+  document.getElementById('l-title').value=item.title||'';
+  document.getElementById('l-org').value=item.org||'';
+  document.getElementById('l-date').value=item.date||'';
+  document.getElementById('l-time').value=item.time||'';
+  document.getElementById('l-link').value=item.link||'';
+  const fmt=document.getElementById('l-format');
+  for(let i=0;i<fmt.options.length;i++){if(fmt.options[i].value===item.format||fmt.options[i].text===item.format){fmt.selectedIndex=i;break;}}
+  if(item.summary){
+    document.getElementById('l-result-text').textContent=item.summary;
+    document.getElementById('l-result-area').style.display='block';
+    document.getElementById('lsum-status').textContent='סיכום קיים — ניתן לעדכן';
+  }
+}
+
 function deleteLearning(id){
   if(!confirm('למחוק אירוע זה?'))return;
   saveLearn2(loadLearn().filter(x=>x.id!==id));renderLearning();showToast('נמחק');
 }
 
-const LEARN_PROMPT=`אתה עוזר מקצועי לפיתוח משאבים בישראל. קיבלת תיאור של וובינר/הכשרה/אירוע מקצועי. נסח תקציר מזמין ומקצועי בעברית (3-4 משפטים) שמתחיל בסמלון 🎓 או 📚. הדגש מה ילמדו המשתתפים ולמי האירוע מתאים. כתוב רק את התקציר, ללא הקדמה.`;
+const LEARN_PROMPT=`אתה עוזר מקצועי לפיתוח משאבים בישראל.
+קיבלת תיאור של וובינר/הכשרה/אירוע מקצועי. החזר JSON בלבד (ללא markdown) עם המבנה הבא:
+
+{
+  "title": "שם האירוע",
+  "org": "שם המארגן",
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM-HH:MM",
+  "format": "וובינר מקוון / כנס פיזי / הכשרה / סדנה / קורס / אחר",
+  "link": "https://...",
+  "summary": "🎓 תקציר מזמין ומקצועי בעברית 3-4 משפטים שמדגיש מה ילמדו ולמי מתאים"
+}
+
+אם פרט לא מופיע — החזר null. החזר JSON בלבד ללא שום טקסט נוסף.`;
 
 async function runSummarizeLearning(){
   const btn=document.getElementById('btn-lsum'),spin=document.getElementById('lsum-spin'),lbl=document.getElementById('lsum-label'),status=document.getElementById('lsum-status'),area=document.getElementById('l-result-area'),txt=document.getElementById('l-result-text');
@@ -896,10 +988,18 @@ function saveLearning(){
   const date=document.getElementById('l-date').value;
   if(!title||!org||!date){showToast('נא למלא שם, מארגן ותאריך');return;}
   const items=loadLearn();
-  items.push({id:Date.now(),title,org,date,time:document.getElementById('l-time').value.trim(),format:document.getElementById('l-format').value,link:document.getElementById('l-link').value.trim(),summary:window._pendingLearnSum||null});
-  saveLearn2(items);clearLearningForm();showToast('אירוע נשמר ✓');showView('learning');
+  const eid=window._editLearnId;
+  const gd={title,org,date,time:document.getElementById('l-time').value.trim(),format:document.getElementById('l-format').value,link:document.getElementById('l-link').value.trim(),summary:(document.getElementById('l-result-text')||{textContent:''}).textContent||window._pendingLearnSum||null};
+  if(eid){
+    const i=items.findIndex(x=>x.id===eid);
+    if(i>-1)items[i]={...items[i],...gd};
+    window._editLearnId=null;
+  }else{
+    items.push({id:Date.now(),...gd});
+  }
+  saveLearn2(items);clearLearningForm();showToast(eid?'אירוע עודכן ✓':'אירוע נשמר ✓');showView('learning');
 }
-function clearLearningForm(){['l-title','l-org','l-date','l-time','l-link','l-raw'].forEach(id=>document.getElementById(id).value='');document.getElementById('l-format').selectedIndex=0;document.getElementById('l-result-area').style.display='none';document.getElementById('lsum-status').textContent='';window._pendingLearnSum=null;}
+function clearLearningForm(){['l-title','l-org','l-date','l-time','l-link','l-raw'].forEach(id=>document.getElementById(id).value='');document.getElementById('l-format').selectedIndex=0;document.getElementById('l-result-area').style.display='none';document.getElementById('lsum-status').textContent='';window._pendingLearnSum=null;window._editLearnId=null;}
 
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
@@ -917,7 +1017,7 @@ function showView(name){
   if(btn)btn.classList.add('active');
   if(name==='board')renderBoard();
   if(name==='admin'){
-    if(!window._editId)clearForm();
+    if(!window._editId&&!window._editLearnId)clearForm();
     setAdminSection(window._adminSection||'grants');
   }
 }
@@ -936,7 +1036,7 @@ function setAdminSection(sec){
   document.querySelectorAll('#view-admin .form-card').forEach(el=>{el.style.display='none';});
   if(sec==='learning'){const el=document.getElementById('form-learning');if(el)el.style.display='block';}
   else{const el=document.querySelector('#view-admin .form-card:not(#form-news):not(#form-learning)');if(el)el.style.display='block';}
-  const titles={grants:'הזנת קול קורא חדש',learning:'הזנת אירוע למידה חדש'};
+  const titles={grants:window._editId?'עריכת קול קורא':'הזנת קול קורא חדש',learning:window._editLearnId?'עריכת אירוע למידה':'הזנת אירוע למידה חדש'};
   document.getElementById('admin-title').textContent=titles[sec]||'הזנה';
 }
 
