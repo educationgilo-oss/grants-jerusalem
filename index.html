@@ -783,7 +783,10 @@ async function runSummarize(){
 
     let parsed;
     try{
-      const clean=result.replace(/```json|```/g,'').trim();
+      let clean=result.replace(/```json/g,'').replace(/```/g,'').trim();
+      const start=clean.indexOf('{');
+      const end=clean.lastIndexOf('}');
+      if(start>=0&&end>=0)clean=clean.slice(start,end+1);
       parsed=JSON.parse(clean);
     }catch(e){
       throw new Error('שגיאה בפרסור התגובה');
