@@ -166,7 +166,8 @@
   </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
-    <button class="tab-btn" onclick="showView('admin')">+ הזנת קול קורא</button>
+    <button class="tab-btn" onclick="showView('learning')">הזדמנויות למידה</button>
+    <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
   </div>
 </nav>
 
@@ -239,7 +240,7 @@
 <div class="view" id="view-learning">
   <div class="page-header">
     <div><div class="page-title">הזדמנויות למידה</div><div class="page-sub">וובינרים ואירועים מקצועיים</div></div>
-    <button class="btn-primary" onclick="showAdminSection('learning')">+ הוספת אירוע</button>
+
   </div>
   <div class="filters">
     <span class="filter-label">סינון:</span>
@@ -573,7 +574,7 @@ function renderStats(grants){
   const total=grants.filter(g=>g.amount).reduce((s,g)=>s+Number(g.amount),0);
   document.getElementById('stats-bar').innerHTML=`
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">קולות קוראים פעילים</div></div>
-    <div class="stat-card urgent"><div class="stat-num">${urgent.length}</div><div class="stat-label">מועד בקרוב</div></div>
+    <div class="stat-card urgent"><div class="stat-num">${loadLearn().filter(i=>du(i.date)>=0).length}</div><div class="stat-label">אירועי למידה</div></div>
     <div class="stat-card gold"><div class="stat-num">${total?'₪'+(total/1000000).toFixed(1)+'M':'—'}</div><div class="stat-label">פוטנציאל מימון</div></div>`;
   document.getElementById('board-sub').textContent=`${active.length} הזדמנויות פעילות`;
 }
@@ -1001,7 +1002,7 @@ async function runSummarizeLearning(){
     if(parsed.org)document.getElementById('l-org').value=parsed.org;
     if(parsed.date)document.getElementById('l-date').value=parsed.date;
     if(parsed.time)document.getElementById('l-time').value=parsed.time;
-    if(parsed.link)document.getElementById('l-link').value=parsed.link;
+    if(parsed.link&&parsed.link!=='null')document.getElementById('l-link').value=parsed.link;
     if(parsed.format){const sel=document.getElementById('l-format');for(let i=0;i<sel.options.length;i++){if(sel.options[i].text===parsed.format||sel.options[i].value===parsed.format){sel.selectedIndex=i;break;}}}
     if(parsed.summary){txt.textContent=parsed.summary;area.style.display='block';window._pendingLearnSum=parsed.summary;}
     status.textContent='✓ הטופס מולא אוטומטית';
