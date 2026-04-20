@@ -153,6 +153,20 @@
   .login-box input{width:100%;font-family:Heebo,sans-serif;font-size:15px;border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center;letter-spacing:3px;outline:none;direction:ltr;margin-bottom:10px;}
   .login-box input:focus{border-color:var(--olive-light);}
   .login-error{font-size:12px;color:var(--terracotta);margin-bottom:8px;min-height:16px;}
+  .cal-grid-header{display:grid;grid-template-columns:repeat(7,1fr);background:var(--olive);color:white;text-align:center;font-size:13px;font-weight:500;}
+  .cal-grid-header div{padding:8px 4px;}
+  .cal-days{display:grid;grid-template-columns:repeat(7,1fr);}
+  .cal-day{min-height:80px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:4px;position:relative;vertical-align:top;}
+  .cal-day:nth-child(7n){border-right:none;}
+  .cal-day.other-month{background:#fafaf5;opacity:.6;}
+  .cal-day.today{background:#EEF1E6;}
+  .cal-day-num{font-size:12px;font-weight:700;color:var(--ink-light);margin-bottom:2px;}
+  .cal-day.today .cal-day-num{color:var(--olive);font-weight:900;}
+  .cal-event{font-size:11px;border-radius:3px;padding:2px 4px;margin-bottom:2px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:white;line-height:1.4;}
+  .cal-event.grant{background:#5C6B3A;}
+  .cal-event.grant:hover{background:#3A4A25;}
+  .cal-event.learn{background:#3A6B8A;}
+  .cal-event.learn:hover{background:#254A63;}
 </style>
 </head>
 <body>
@@ -167,6 +181,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
     <button class="tab-btn" onclick="showView('learning')">הזדמנויות למידה</button>
+    <button class="tab-btn" onclick="showView('cal')">יומן אירועים</button>
     <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
   </div>
 </nav>
@@ -251,6 +266,25 @@
     </select>
   </div>
   <div id="learning-list" class="grants-list"></div>
+</div>
+
+
+<!-- CALENDAR VIEW -->
+<div class="view" id="view-cal">
+  <div class="page-header">
+    <div><div class="page-title" id="cal-title">יומן מועדים</div></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="calPrev()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:16px;">‹</button>
+      <button onclick="calNext()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:16px;">›</button>
+    </div>
+  </div>
+  <!-- Legend -->
+  <div style="display:flex;gap:16px;margin-bottom:1rem;font-size:13px;">
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:#5C6B3A;display:inline-block;"></span>קולות קוראים</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:#3A6B8A;display:inline-block;"></span>אירועי למידה</span>
+  </div>
+  <!-- Calendar grid -->
+  <div id="cal-grid" style="background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;"></div>
 </div>
 
 <!-- ADMIN VIEW -->
@@ -626,6 +660,76 @@ function renderBoard(){
 }
 
 
+
+
+// ======= CALENDAR =======
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
+
+const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const HE_DAYS=['א','ב','ג','ד','ה','ו','ש'];
+
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCal();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCal();}
+
+function renderCal(){
+  document.getElementById('cal-title').textContent='יומן מועדים — '+HE_MONTHS[calMonth]+' '+calYear;
+  
+  const grants=load().filter(g=>du(g.deadline)>=0);
+  const learns=loadLearn().filter(i=>du(i.date)>=0);
+  
+  // Build events map by date string YYYY-MM-DD
+  const events={};
+  grants.forEach(g=>{
+    const k=g.deadline;
+    if(!events[k])events[k]=[];
+    events[k].push({type:'grant',title:g.title,id:g.id});
+  });
+  learns.forEach(i=>{
+    const k=i.date;
+    if(!events[k])events[k]=[];
+    events[k].push({type:'learn',title:i.title,id:i.id});
+  });
+
+  // First day of month
+  const firstDay=new Date(calYear,calMonth,1).getDay(); // 0=Sun
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  
+  const today=new Date();
+  const todayStr=today.toISOString().slice(0,10);
+
+  let html='<div class="cal-grid-header">';
+  HE_DAYS.forEach(d=>html+=`<div>${d}</div>`);
+  html+='</div><div class="cal-days">';
+
+  // Previous month days
+  for(let i=firstDay-1;i>=0;i--){
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${daysInPrev-i}</div></div>`;
+  }
+  
+  // Current month days
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=dateStr===todayStr;
+    const dayEvents=events[dateStr]||[];
+    html+=`<div class="cal-day${isToday?' today':''}">`;
+    html+=`<div class="cal-day-num">${d}</div>`;
+    dayEvents.forEach(e=>{
+      html+=`<div class="cal-event ${e.type}" onclick="${e.type==='grant'?'openModal('+e.id+')':'openLearnModal('+e.id+')'}" title="${e.title}">${e.title}</div>`;
+    });
+    html+='</div>';
+  }
+
+  // Next month days
+  const totalCells=Math.ceil((firstDay+daysInMonth)/7)*7;
+  for(let d=1;d<=totalCells-firstDay-daysInMonth;d++){
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+  
+  html+='</div>';
+  document.getElementById('cal-grid').innerHTML=html;
+}
 
 function renderBoardLearning(){
   const items=loadLearn()
@@ -1045,8 +1149,12 @@ function showView(name){
             document.querySelector('.tab-btn[onclick="showView(\''+name+'\')"]');
   if(btn)btn.classList.add('active');
   if(name==='board')renderBoard();
+  if(name==='cal')renderCal();
   if(name==='admin'){
-    if(!window._editId&&!window._editLearnId)clearForm();
+    if(!window._editId&&!window._editLearnId){
+      clearForm();
+      clearLearningForm();
+    }
     setAdminSection(window._adminSection||'grants');
   }
 }
