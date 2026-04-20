@@ -382,21 +382,8 @@
           </div>
         </div>
       </div>
-      <div class="form-group full">
-        <label>הערות פנימיות</label>
-        <textarea id="f-notes" placeholder="הערות, מידע רלוונטי למרכזים..."></textarea>
-      </div>
-      <div class="form-group full">
-        <label>קובץ מקורי של הקול הקורא</label>
-        <div class="file-upload-zone" id="grant-file-zone" onclick="document.getElementById('grant-file-input').click()" ondragover="grantFileDragOver(event)" ondrop="grantFileDrop(event)">
-          <input type="file" id="grant-file-input" onchange="handleGrantFile(this.files[0])">
-          <span class="fuz-icon">📎</span>
-          <div>
-            <div class="fuz-text">לחצי לצירוף קובץ (PDF, Word, Excel וכו')</div>
-            <div class="fuz-name" id="grant-file-name"></div>
-          </div>
-        </div>
-      </div>
+
+
     </div>
     <div class="form-actions">
       <button class="btn-primary" onclick="saveGrant()">שמור קול קורא</button>
@@ -1216,7 +1203,6 @@ function saveGrant(){
     amount:document.getElementById('f-amount').value,
     link:document.getElementById('f-link').value.trim(),
     docLink:document.getElementById('f-doc-link').value.trim(),
-    notes:document.getElementById('f-notes').value.trim(),
     summary:(document.getElementById('ai-result-text')||{value:''}).value.trim()||(eid?(grants.find(g=>g.id===eid)||{}).summary:null)||null,
     fileData:window._grantFileData||(eid?(grants.find(g=>g.id===eid)||{}).fileData:null)||null,
     fileName:window._grantFileName||(eid?(grants.find(g=>g.id===eid)||{}).fileName:null)||null
@@ -1246,7 +1232,6 @@ function editGrant(id){
   document.getElementById('f-amount').value=g.amount||'';
   document.getElementById('f-link').value=g.link||'';
   document.getElementById('f-doc-link').value=g.docLink||'';
-  document.getElementById('f-notes').value=g.notes||'';
   if(g.summary){
     document.getElementById('ai-result-text').value=g.summary;
     document.getElementById('ai-result-area').style.display='block';
@@ -1269,7 +1254,7 @@ function deleteGrant(id){
 }
 
 function clearForm(){
-  ['f-title','f-org','f-deadline','f-amount','f-link','f-doc-link','f-raw','f-notes'].forEach(id=>{
+  ['f-title','f-org','f-deadline','f-amount','f-link','f-doc-link','f-raw'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   const fcat=document.getElementById('f-cat');if(fcat)fcat.selectedIndex=0;
