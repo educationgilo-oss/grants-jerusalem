@@ -261,8 +261,8 @@
     <span class="filter-label">סינון:</span>
     <input type="text" id="learning-search" placeholder="חיפוש..." oninput="renderLearning()">
     <select id="learning-filter" onchange="renderLearning()">
-      <option value="">הכל</option>
-      <option value="upcoming">עתידיים בלבד</option>
+      <option value="upcoming" selected>אירועים עתידיים</option>
+      <option value="">כל האירועים</option>
     </select>
   </div>
   <div id="learning-list" class="grants-list"></div>
@@ -980,12 +980,15 @@ function saveLearn2(d){try{localStorage.setItem(SK_LEARN,JSON.stringify(d));}cat
 function renderLearning(){
   let items=loadLearn();
   const s=document.getElementById('learning-search').value.toLowerCase();
-  const f=document.getElementById('learning-filter').value;
+  const f=document.getElementById('learning-filter')?document.getElementById('learning-filter').value:'upcoming';
   if(s)items=items.filter(i=>i.title.toLowerCase().includes(s)||(i.org||'').toLowerCase().includes(s)||(i.summary||'').toLowerCase().includes(s));
   if(f==='upcoming')items=items.filter(i=>du(i.date)>=0);
   items.sort((a,b)=>new Date(a.date)-new Date(b.date));
   const list=document.getElementById('learning-list');
-  if(!items.length){list.innerHTML='<div class="empty-state">לא נמצאו אירועים</div>';return;}
+  if(!items.length){
+    const msg=f==='upcoming'?'אין אירועים עתידיים כרגע — בחרי "כל האירועים" לצפייה בכולם':'לא נמצאו אירועים';
+    list.innerHTML=`<div class="empty-state">${msg}</div>`;return;
+  }
   list.innerHTML=items.map(item=>{
     const d=du(item.date),past=d<0;
     return`<div class="grant-card${past?' ':(d<=7?' urgent-card':'')}" onclick="openLearnModal(${item.id})" style="${past?'opacity:.65':''}">
@@ -1008,7 +1011,6 @@ function renderLearning(){
       <div class="grant-footer">
         ${item.link?`<a class="grant-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">🔗 הרשמה</a>`:'<span></span>'}
         <div class="grant-actions" onclick="event.stopPropagation()">
-          <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
           <button class="btn-share" onclick="event.stopPropagation();shareLearning(${item.id})">שיתוף ↗</button>
           <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
           <button class="btn-icon danger" onclick="deleteLearning(${item.id})">מחיקה</button>
@@ -1258,6 +1260,7 @@ function showView(name){
   if(btn)btn.classList.add('active');
   if(name==='board')renderBoard();
   if(name==='cal')renderCal();
+  if(name==='learning')renderLearning();
   if(name==='admin'){
     if(!window._editId&&!window._editLearnId){
       clearForm();
