@@ -485,7 +485,25 @@
       <div class="form-group full">
         <div class="ai-section">
           <div class="ai-section-title">✨ ניסוח/סיכום בעזרת AI</div>
-          <textarea id="l-raw" style="min-height:90px;background:white;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:Heebo,sans-serif;font-size:14px;width:100%;direction:rtl;" placeholder="הדביקי את תיאור האירוע. הAI ינסח תקציר תמציתי ומזמין."></textarea>
+          <div class="content-tabs" style="margin-bottom:10px;">
+            <button class="ctab active" onclick="switchLearnTab('text')">הדבקת טקסט</button>
+            <button class="ctab" onclick="switchLearnTab('pdf')">העלאת PDF</button>
+            <button class="ctab" onclick="switchLearnTab('url')">קישור URL</button>
+          </div>
+          <div id="ltab-text" class="ctab-panel active">
+            <textarea id="l-raw" style="min-height:90px;background:white;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:Heebo,sans-serif;font-size:14px;width:100%;direction:rtl;" placeholder="הדביקי את תיאור האירוע. הAI ינסח תקציר תמציתי ומזמין."></textarea>
+          </div>
+          <div id="ltab-pdf" class="ctab-panel" style="display:none;">
+            <div class="pdf-drop" onclick="document.getElementById('l-pdf-input').click()" ondragover="event.preventDefault()" ondrop="handleLearnPdfDrop(event)">
+              <input type="file" id="l-pdf-input" accept=".pdf" onchange="handleLearnPdf(this.files[0])">
+              <div>📄 לחצי כאן להעלאת PDF או גרירה לכאן</div>
+              <div class="pdf-fname" id="l-pdf-fname"></div>
+            </div>
+          </div>
+          <div id="ltab-url" class="ctab-panel" style="display:none;">
+            <input type="url" id="l-url" placeholder="https://... הדביקי קישור לדף האירוע" style="width:100%;font-family:Heebo,sans-serif;font-size:14px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;background:white;color:var(--ink);outline:none;direction:ltr;">
+            <div style="font-size:12px;color:var(--ink-light);margin-top:6px;">הAI יביא את תוכן הדף וימלא את השדות אוטומטית</div>
+          </div>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <button class="btn-ai" id="btn-lsum" onclick="runSummarizeLearning()">
               <span id="lsum-label">✨ נסחי תקציר</span>
@@ -991,6 +1009,8 @@ function renderLearning(){
         ${item.link?`<a class="grant-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">🔗 הרשמה</a>`:'<span></span>'}
         <div class="grant-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
+          <button class="btn-share" onclick="event.stopPropagation();shareLearning(${item.id})">שיתוף ↗</button>
+          <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
           <button class="btn-icon danger" onclick="deleteLearning(${item.id})">מחיקה</button>
         </div>
       </div>
@@ -1070,15 +1090,83 @@ const LEARN_PROMPT=`אתה עוזר מקצועי לפיתוח משאבים בי�
 
 החזר JSON תקני בלבד.`;
 
+
+function switchLearnTab(tab){
+  document.querySelectorAll('#form-learning .ctab').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`#form-learning .ctab[onclick="switchLearnTab('${tab}')"]`).classList.add('active');
+  document.getElementById('ltab-text').style.display=tab==='text'?'block':'none';
+  document.getElementById('ltab-pdf').style.display=tab==='pdf'?'block':'none';
+  document.getElementById('ltab-url').style.display=tab==='url'?'block':'none';
+}
+
+let learnPdfB64=null;
+function handleLearnPdf(file){
+  if(!file)return;
+  document.getElementById('l-pdf-fname').textContent='📄 '+file.name;
+  const r=new FileReader();
+  r.onload=e=>{learnPdfB64=e.target.result.split(',')[1];};
+  r.readAsDataURL(file);
+}
+function handleLearnPdfDrop(e){
+  e.preventDefault();
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type==='application/pdf')handleLearnPdf(f);
+}
+
 async function runSummarizeLearning(){
   const btn=document.getElementById('btn-lsum'),spin=document.getElementById('lsum-spin'),lbl=document.getElementById('lsum-label'),status=document.getElementById('lsum-status'),area=document.getElementById('l-result-area'),txt=document.getElementById('l-result-text');
+  const urlVal=(document.getElementById('l-url')||{value:''}).value.trim();
   const raw=document.getElementById('l-raw').value.trim();
-  if(!raw){showToast('נא להדביק תיאור האירוע');return;}
+  const activeLearnTab=document.getElementById('ltab-url')&&document.getElementById('ltab-url').style.display!=='none'?'url':
+    document.getElementById('ltab-pdf')&&document.getElementById('ltab-pdf').style.display!=='none'?'pdf':'text';
+  if(activeLearnTab==='text'&&!raw){showToast('נא להדביק תיאור האירוע');return;}
+  if(activeLearnTab==='pdf'&&!learnPdfB64){showToast('נא להעלות PDF');return;}
+  if(activeLearnTab==='url'&&!urlVal){showToast('נא להדביק קישור');return;}
   const apiKeyL=getApiKey();
   if(!apiKeyL){showToast('נא להזין מפתח API');status.textContent='חסר מפתח API';return;}
-  btn.disabled=true;lbl.style.display='none';spin.style.display='inline-block';status.textContent='מנסח...';area.style.display='none';
+  btn.disabled=true;lbl.style.display='none';spin.style.display='inline-block';
+  status.textContent=activeLearnTab==='url'?'מביא תוכן מהדף...':'מנסח...';area.style.display='none';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\n'+raw}]})});
+    let inputText=raw;
+    if(activeLearnTab==='pdf'){
+      const res0=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,
+          messages:[{role:'user',content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:learnPdfB64}},
+            {type:'text',text:LEARN_PROMPT}
+          ]}]})
+      });
+      const d0=await res0.json();
+      if(d0.error)throw new Error(d0.error.message);
+      const r0=(d0.content||[]).map(c=>c.text||'').join('');
+      let p0;
+      try{let c0=r0.replace(/```json/g,'').replace(/```/g,'').trim();const s0=c0.indexOf('{'),e0=c0.lastIndexOf('}');if(s0>=0&&e0>=0)c0=c0.slice(s0,e0+1);p0=JSON.parse(c0);}catch(e){throw new Error('שגיאה בפרסור');}
+      if(p0.title)document.getElementById('l-title').value=p0.title;
+      if(p0.org)document.getElementById('l-org').value=p0.org;
+      if(p0.date)document.getElementById('l-date').value=p0.date;
+      if(p0.time)document.getElementById('l-time').value=p0.time;
+      if(p0.link&&p0.link!=='null')document.getElementById('l-link').value=p0.link;
+      if(p0.format){const s=document.getElementById('l-format');for(let i=0;i<s.options.length;i++){if(s.options[i].text===p0.format){s.selectedIndex=i;break;}}}
+      if(p0.summary){document.getElementById('l-result-text').textContent=p0.summary;area.style.display='block';window._pendingLearnSum=p0.summary;}
+      status.textContent='✓ הטופס מולא אוטומטית';showToast('הטופס מולא אוטומטית ✓');
+      btn.disabled=false;lbl.style.display='inline';spin.style.display='none';return;
+    }
+    if(activeLearnTab==='url'){
+      const fetchRes=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          messages:[{role:'user',content:'גש לכתובת הבאה והחזר את הטקסט המלא שלה: '+urlVal}]})
+      });
+      const fetchData=await fetchRes.json();
+      if(fetchData.error)throw new Error(fetchData.error.message);
+      inputText=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n')||urlVal;
+      status.textContent='מנתח ומסכם...';
+    }
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\n'+(activeLearnTab==='url'?'URL: '+urlVal+'\n\n'+inputText:inputText)}]})});
     const data=await res.json();
     if(data.error)throw new Error(data.error.message||'שגיאת API');
     const result=(data.content||[]).map(c=>c.text||'').join('');
@@ -1099,6 +1187,7 @@ async function runSummarizeLearning(){
     if(parsed.date)document.getElementById('l-date').value=parsed.date;
     if(parsed.time)document.getElementById('l-time').value=parsed.time;
     if(parsed.link&&parsed.link!=='null')document.getElementById('l-link').value=parsed.link;
+    else if(activeLearnTab==='url'&&urlVal)document.getElementById('l-link').value=urlVal;
     if(parsed.format){const sel=document.getElementById('l-format');for(let i=0;i<sel.options.length;i++){if(sel.options[i].text===parsed.format||sel.options[i].value===parsed.format){sel.selectedIndex=i;break;}}}
     if(parsed.summary){txt.textContent=parsed.summary;area.style.display='block';window._pendingLearnSum=parsed.summary;}
     status.textContent='✓ הטופס מולא אוטומטית';
@@ -1124,7 +1213,7 @@ function saveLearning(){
   }
   saveLearn2(items);clearLearningForm();showToast(eid?'אירוע עודכן ✓':'אירוע נשמר ✓');showView('learning');
 }
-function clearLearningForm(){['l-title','l-org','l-date','l-time','l-link','l-raw'].forEach(id=>document.getElementById(id).value='');document.getElementById('l-format').selectedIndex=0;document.getElementById('l-result-area').style.display='none';document.getElementById('lsum-status').textContent='';window._pendingLearnSum=null;window._editLearnId=null;}
+function clearLearningForm(){['l-title','l-org','l-date','l-time','l-link','l-raw','l-url'].forEach(id=>document.getElementById(id).value='');document.getElementById('l-format').selectedIndex=0;document.getElementById('l-result-area').style.display='none';document.getElementById('lsum-status').textContent='';window._pendingLearnSum=null;window._editLearnId=null;learnPdfB64=null;const lpf=document.getElementById('l-pdf-fname');if(lpf)lpf.textContent='';}
 
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
@@ -1297,6 +1386,67 @@ function checkLogin(){
 
 function saveApiKey(val){
   if(val) localStorage.setItem('anthropic_api_key', val);
+}
+
+
+function buildShareText(title, org, dateStr, summary, link, docLink){
+  let text = '';
+  if(summary) text = summary;
+  else text = `${title}\n${org||''}`;
+  if(dateStr) text += `\n\n📅 ${fmtD(dateStr)}`;
+  if(link) text += `\n\n🔗 ${link}`;
+  if(docLink) text += `\n📄 ${docLink}`;
+  return text;
+}
+
+function openShareModal(title, text, link){
+  const subject = encodeURIComponent(title);
+  const body = encodeURIComponent(text);
+  const wa = encodeURIComponent(text);
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-header">
+      <div><div class="grant-title">שיתוף</div><div class="grant-org" style="margin-top:4px">${title}</div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <hr class="modal-divider">
+    <div style="font-size:13px;color:var(--ink-mid);margin-bottom:12px;">בחרי איך לשתף:</div>
+    <div class="share-modal-btns">
+      <button class="share-btn-opt" onclick="window.open('mailto:?subject=${subject}&body=${body}','_blank')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C6B3A" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        שליחה במייל
+      </button>
+      <button class="share-btn-opt" onclick="window.open('https://wa.me/?text=${wa}','_blank')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.852L0 24l6.335-1.51A11.933 11.933 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.371l-.36-.214-3.732.89.925-3.63-.235-.374A9.818 9.818 0 1 1 12 21.818z"/></svg>
+        שליחה בוואטסאפ
+      </button>
+      <button class="share-btn-opt" id="copy-share-btn" onclick="copyShareText('${encodeURIComponent(text)}')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C6B3A" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        העתקה ללוח
+      </button>
+    </div>
+    <div id="copy-confirm" style="display:none;margin-top:10px;font-size:13px;color:var(--olive);text-align:center">✓ הועתק!</div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function copyShareText(encodedText){
+  const text = decodeURIComponent(encodedText);
+  navigator.clipboard.writeText(text).then(()=>{
+    const el=document.getElementById('copy-confirm');
+    if(el){el.style.display='block';setTimeout(()=>{el.style.display='none';},2000);}
+  }).catch(()=>showToast('לא ניתן להעתיק'));
+}
+
+function shareGrant(id){
+  const g=load().find(x=>x.id===id);if(!g)return;
+  const text=buildShareText(g.title, g.org, g.deadline, g.summary, g.link, g.docLink);
+  openShareModal(g.title, text, g.link);
+}
+
+function shareLearning(id){
+  const item=loadLearn().find(x=>x.id===id);if(!item)return;
+  const text=buildShareText(item.title, item.org, item.date, item.summary, item.link, null);
+  openShareModal(item.title, text, item.link);
 }
 
 function showConfirm(msg, cb){
