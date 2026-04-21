@@ -167,6 +167,11 @@
   .cal-event.grant:hover{background:#3A4A25;}
   .cal-event.learn{background:#3A6B8A;}
   .cal-event.learn:hover{background:#254A63;}
+  .cat-pill-form{border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;font-family:'Heebo',sans-serif;background:white;color:var(--ink-mid);transition:all .15s;white-space:nowrap;}
+  .cat-pill-form:hover{border-color:var(--olive-light);color:var(--olive);}
+  .cat-pill-form.selected{background:var(--olive);color:white;border-color:var(--olive);}
+  .btn-details{background:none;border:1px solid var(--olive-light);border-radius:20px;padding:5px 14px;font-size:12px;font-family:'Heebo',sans-serif;color:var(--olive);cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .btn-details:hover{background:var(--olive);color:white;}
 </style>
 </head>
 <body>
@@ -568,15 +573,28 @@ const PROMPT=`אתה עוזר מקצועי לפיתוח משאבים בישרא�
   "deadline": "YYYY-MM-DD",
   "amount": 150000,
   "link": "https://...",
-  "cat": "קטגוריה מהרשימה: קהילה/ילדים/נוער/חינוך/נשים/ספורט/קיימות/גיל שלישי/צרכים מיוחדים/חברה ערבית/חברה חרדית/תרבות/עולים/שיפוץ ובינוי/יהדות ומורשת/אחר",
+  "cat": "עד 3 קטגוריות מהרשימה מופרדות בפסיק",
   "summary": "🏛️ [שם הגוף התומך]: [שם הקול הקורא] – [שנה]\n\n👥 קהל יעד: ...\n\n📝 מי יכול להגיש: ...\n\n📖 תיאור מקיף: ...\n\n💰 היקף תמיכה / סוג מענק: ...\n\n☑️ תנאי סף עיקריים:\n• ...\n• ...\n\n📅 מועד אחרון להגשה: ...\n\n🔗 קישור לפרטים והגשה: ..."
 }
 
-הנחיות:
+הנחיות לבחירת קטגוריות (cat):
+- בחר עד 3 קטגוריות מהרשימה: קהילה, ילדים, נוער, חינוך, נשים, ספורט, קיימות, גיל שלישי, צרכים מיוחדים, חברה ערבית, חברה חרדית, תרבות, עולים, שיפוץ ובינוי, יהדות ומורשת, אחר
+- שאל את עצמך: מי המוטבים הישירים של הפעילות? (לא הארגון המגיש)
+- אנשים עם מוגבלות / צרכים מיוחדים / נכויות → "צרכים מיוחדים"
+- קשישים / אוכלוסייה מבוגרת → "גיל שלישי"  
+- ילדים עד גיל 12 → "ילדים"
+- נוער גילאי 13-18 → "נוער"
+- שיפוץ מבנים / הנגשה / בינוי → "שיפוץ ובינוי"
+- זיכרון השואה / מורשת יהודית → "יהדות ומורשת" אבל גם "גיל שלישי" אם מיועד לניצולים
+- פעילות קהילתית כללית → "קהילה"
+- החזר מופרדות בפסיק: "צרכים מיוחדים, קהילה"
+- אם הקול הקורא כולל תקציב לשיפוץ, ציוד, הצטיידות, נגישות, בניה, תשתיות → תמיד הוסף "שיפוץ ובינוי"
+- ניתן לשלב: "שיפוץ ובינוי, צרכים מיוחדים" אם הציוד מיועד לאנשים עם מוגבלות
+
+הנחיות נוספות:
 - deadline בפורמט YYYY-MM-DD בלבד. אם לא מופיע — החזר null
 - amount כמספר שלם בשקלים. אם לא מופיע — החזר null  
 - link — אם לא מופיע — החזר null
-- cat — בחר את הקטגוריה המתאימה ביותר מהרשימה
 - summary — סיכום מפורט ומורחב לפי הפורמט
 - החזר JSON תקני בלבד, ללא שום טקסט נוסף`;
 
@@ -650,7 +668,7 @@ function renderBoard(){
             <span class="badge badge-cat">${g.cat}</span>
             ${g.amount?`<span class="badge badge-amount">${fmtA(g.amount)}</span>`:''}
             ${urg?'<span class="badge badge-urgent">דחוף</span>':''}
-            ${g.summary?'<span class="badge badge-ai">✨ סוכם</span>':''}
+            
           </div>
         </div>
         <div class="grant-deadline"><span class="days${d<0?' ok':(urg?'':' ok')}">${dl}</span><span style="color:var(--ink-light)"> | ${fmtD(g.deadline)}</span></div>
@@ -660,6 +678,7 @@ function renderBoard(){
         ${(()=>{let parts=[];if(g.link)parts.push(`<a class="grant-link" href="${g.link}" target="_blank" onclick="event.stopPropagation()">🔗 לינק לקול הקורא</a>`);
               if(g.docLink)parts.push(`<a class="grant-link" href="${g.docLink}" target="_blank" onclick="event.stopPropagation()">📄 לפרטים נוספים באתר</a>`);if(g.fileData)parts.push(`<a class="file-chip" href="${g.fileData}" download="${g.fileName||'קול_קורא'}" onclick="event.stopPropagation()">📎 ${g.fileName||'קובץ מקורי'}</a>`);return parts.join(' ')||'<span></span>';})()}
         <div class="grant-actions">
+          <button class="btn-details" onclick="openModal(${g.id})">לפרטים המלאים ←</button>
           <button class="btn-share" onclick="event.stopPropagation();shareGrant(${g.id})">שיתוף ↗</button>
           <button class="btn-icon" onclick="event.stopPropagation();editGrant(${g.id})">עריכה</button>
           <button class="btn-icon danger" onclick="event.stopPropagation();deleteGrant(${g.id})">מחיקה</button>
@@ -764,7 +783,7 @@ function renderBoardLearning(){
           <div class="grant-org">${item.org||''}</div>
           <div class="grant-badges">
             <span class="badge badge-cat">${item.format||''}</span>
-            ${item.summary?'<span class="badge badge-ai">✨ סוכם</span>':''}
+            
           </div>
         </div>
         <div class="grant-deadline">
@@ -914,10 +933,8 @@ async function runSummarize(){
     if(parsed.amount) document.getElementById('f-amount').value=parsed.amount;
     if(parsed.link)  document.getElementById('f-link').value=parsed.link;
     if(parsed.cat){
-      const sel=document.getElementById('f-cat');
-      for(let i=0;i<sel.options.length;i++){
-        if(sel.options[i].value===parsed.cat||sel.options[i].text===parsed.cat){sel.selectedIndex=i;break;}
-      }
+      const cats=parsed.cat.split(',').map(c=>c.trim()).filter(Boolean);
+      initCatPillsForm(cats);
     }
     if(parsed.summary){
       txt.value=parsed.summary;
@@ -998,7 +1015,7 @@ function renderLearning(){
           <div class="grant-org">${item.org||''}</div>
           <div class="grant-badges">
             <span class="badge badge-cat">${item.format||''}</span>
-            ${item.summary?'<span class="badge badge-ai">✨ סוכם</span>':''}
+            
             ${past?'<span class="badge" style="background:#f0f0ec;color:var(--ink-light)">עבר</span>':''}
           </div>
         </div>
@@ -1265,6 +1282,7 @@ function showView(name){
     if(!window._editId&&!window._editLearnId){
       clearForm();
       clearLearningForm();
+      initCatPillsForm([]);
     }
     setAdminSection(window._adminSection||'grants');
   }
@@ -1309,6 +1327,31 @@ function setSort(s){
 }
 
 
+
+const GRANT_CATS=['קהילה','ילדים','נוער','חינוך','נשים','ספורט','קיימות','גיל שלישי','צרכים מיוחדים','חברה ערבית','חברה חרדית','תרבות','עולים','שיפוץ ובינוי','יהדות ומורשת','אחר'];
+
+function initCatPillsForm(selected){
+  window._selectedGrantCats=selected||[];
+  const container=document.getElementById('cat-pills-form');
+  if(!container)return;
+  container.innerHTML=GRANT_CATS.map(c=>{
+    const isSelected=window._selectedGrantCats.includes(c);
+    return `<button type="button" class="cat-pill-form${isSelected?' selected':''}" data-cat="${c}" onclick="toggleGrantCat('${c}')">${c}</button>`;
+  }).join('');
+}
+
+function toggleGrantCat(cat){
+  if(!window._selectedGrantCats)window._selectedGrantCats=[];
+  const idx=window._selectedGrantCats.indexOf(cat);
+  if(idx>-1)window._selectedGrantCats.splice(idx,1);
+  else window._selectedGrantCats.push(cat);
+  initCatPillsForm(window._selectedGrantCats);
+}
+
+function getSelectedCats(){
+  return (window._selectedGrantCats||[]).join(', ');
+}
+
 function saveGrant(){
   const title=document.getElementById('f-title').value.trim();
   const org=document.getElementById('f-org').value.trim();
@@ -1318,7 +1361,7 @@ function saveGrant(){
   const eid=window._editId;
   const gd={
     title,org,deadline,
-    cat:document.getElementById('f-cat').value,
+    cat:getSelectedCats()||'אחר',
     amount:document.getElementById('f-amount').value,
     link:document.getElementById('f-link').value.trim(),
     docLink:document.getElementById('f-doc-link').value.trim(),
@@ -1344,6 +1387,8 @@ function editGrant(id){
   showView('admin');
   document.getElementById('admin-title').textContent='עריכת קול קורא';
   window._editId=id;window._pendingSum=g.summary||null;
+  const savedCats=g.cat?g.cat.split(', ').map(c=>c.trim()).filter(Boolean):[];
+  initCatPillsForm(savedCats);
   document.getElementById('f-title').value=g.title;
   document.getElementById('f-org').value=g.org;
   document.getElementById('f-deadline').value=g.deadline;
@@ -1383,6 +1428,7 @@ function clearForm(){
   const gfn=document.getElementById('grant-file-name');if(gfn)gfn.textContent='';
   document.getElementById('admin-title').textContent='הזנת קול קורא חדש';
   window._editId=null;window._pendingSum=null;pdfB64=null;
+  initCatPillsForm([]);
   window._grantFileData=null;window._grantFileName=null;
 }
 
