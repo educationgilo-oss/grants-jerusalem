@@ -1154,16 +1154,43 @@ async function runSummarizeLearning(){
       btn.disabled=false;lbl.style.display='inline';spin.style.display='none';return;
     }
     if(activeLearnTab==='url'){
+      // Send URL directly to Claude with web_search to fetch content
       const fetchRes=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages:[{role:'user',content:'גש לכתובת הבאה והחזר את הטקסט המלא שלה: '+urlVal}]})
+          messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\nגש לקישור הבא, קרא את תוכנו וחלץ את פרטי האירוע: '+urlVal}]})
       });
       const fetchData=await fetchRes.json();
       if(fetchData.error)throw new Error(fetchData.error.message);
-      inputText=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n')||urlVal;
+      // Extract text from response (may contain tool use blocks)
+      const textBlocks=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text);
+      if(textBlocks.length>0){
+        // Try to parse as JSON directly
+        try{
+          let clean=textBlocks[0].replace(/\`\`\`json/g,'').replace(/\`\`\`/g,'').trim();
+          const s=clean.indexOf('{');const e=clean.lastIndexOf('}');
+          if(s>=0&&e>=0)clean=clean.slice(s,e+1);
+          parsed=JSON.parse(clean);
+          if(parsed.title)document.getElementById('l-title').value=parsed.title;
+          if(parsed.org)document.getElementById('l-org').value=parsed.org;
+          if(parsed.date)document.getElementById('l-date').value=parsed.date;
+          if(parsed.time)document.getElementById('l-time').value=parsed.time;
+          if(parsed.link&&parsed.link!=='null')document.getElementById('l-link').value=parsed.link;
+          else document.getElementById('l-link').value=urlVal;
+          if(parsed.format){const sel=document.getElementById('l-format');for(let i=0;i<sel.options.length;i++){if(sel.options[i].text===parsed.format){sel.selectedIndex=i;break;}}}
+          if(parsed.summary){document.getElementById('l-result-text').textContent=parsed.summary;document.getElementById('l-result-area').style.display='block';window._pendingLearnSum=parsed.summary;}
+          status.textContent='✓ הטופס מולא אוטומטית';
+          showToast('הטופס מולא אוטומטית ✓');
+          btn.disabled=false;lbl.style.display='inline';spin.style.display='none';
+          return;
+        }catch(e2){
+          inputText=textBlocks.join('\n');
+        }
+      }else{
+        inputText=urlVal;
+      }
       status.textContent='מנתח ומסכם...';
     }
     const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKeyL,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,messages:[{role:'user',content:LEARN_PROMPT+'\n\n---\n'+(activeLearnTab==='url'?'URL: '+urlVal+'\n\n'+inputText:inputText)}]})});
