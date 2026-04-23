@@ -743,7 +743,7 @@ function renderBoard(){
           <button class="btn-details" onclick="openModal(${g.id})">לפרטים המלאים ←</button>
           <button class="btn-share" onclick="event.stopPropagation();shareGrant(${g.id})">שיתוף ↗</button>
           <button class="btn-icon" onclick="event.stopPropagation();editGrant(${g.id})">עריכה</button>
-          <button class="btn-icon danger" onclick="event.stopPropagation();deleteGrant(${g.id})">מחיקה</button>
+          <button class="btn-icon danger" onclick="event.stopPropagation();requireAdmin(()=>deleteGrant(${g.id}))">מחיקה</button>
         </div>
       </div>
     </div>`;
@@ -1795,11 +1795,9 @@ function _editGrantInner(id){
 
 function deleteGrant(id){
   showConfirm('האם למחוק קול קורא זה?', ()=>{
-    requireAdmin(()=>{
-      save(load().filter(g=>g.id!==id));
-      renderBoard();
-      showToast('קול קורא נמחק');
-    });
+    save(load().filter(g=>g.id!==id));
+    renderBoard();
+    showToast('קול קורא נמחק');
   });
 }
 
