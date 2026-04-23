@@ -186,6 +186,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
     <button class="tab-btn" onclick="showView('learning')">הזדמנויות למידה</button>
+    <button class="tab-btn" onclick="showView('pubs')">פרסומים</button>
     <button class="tab-btn" onclick="showView('cal')">יומן אירועים</button>
     <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
   </div>
@@ -273,6 +274,18 @@
 </div>
 
 
+
+<!-- PUBLICATIONS VIEW -->
+<div class="view" id="view-pubs">
+  <div class="page-header">
+    <div><div class="page-title">פרסומים ומסמכים מקצועיים</div><div class="page-sub">חומרים מקצועיים, עדכוני מדיניות ודוחות</div></div>
+  </div>
+  <div style="margin-bottom:10px;">
+    <input type="text" id="pubs-search" placeholder="חיפוש פרסום..." oninput="renderPubs()" style="width:100%;font-family:Heebo,sans-serif;font-size:14px;border:1px solid var(--border);border-radius:8px;padding:10px 14px;background:white;color:var(--ink);outline:none;direction:rtl;">
+  </div>
+  <div class="grants-list" id="pubs-list"></div>
+</div>
+
 <!-- CALENDAR VIEW -->
 <div class="view" id="view-cal">
   <div class="page-header">
@@ -300,6 +313,7 @@
   <div style="display:flex;gap:8px;margin-bottom:1.5rem;">
     <button class="ctab active" id="stab-grants" onclick="setAdminSection('grants')">הזנת קול קורא</button>
     <button class="ctab" id="stab-learning" onclick="setAdminSection('learning')">הזנת אירוע למידה</button>
+    <button class="ctab" id="stab-pubs" onclick="setAdminSection('pubs')">הזנת פרסום</button>
   </div>
 
   <div class="form-card">
@@ -689,6 +703,97 @@ function renderBoard(){
 
 
 
+
+
+// ======= PUBLICATIONS =======
+const SK_PUBS='pubs_jlm_v1';
+function loadPubs(){try{const s=localStorage.getItem(SK_PUBS);return s?JSON.parse(s):[]}catch{return[];}}
+function savePubs(p){try{localStorage.setItem(SK_PUBS,JSON.stringify(p));}catch{}}
+
+function savePub(){
+  const title=document.getElementById('p-title').value.trim();
+  if(!title){showToast('נא למלא שם פרסום');return;}
+  const pubs=loadPubs();
+  const eid=window._editPubId;
+  const pd={
+    title,
+    org:document.getElementById('p-org').value.trim(),
+    date:document.getElementById('p-date').value||null,
+    link:document.getElementById('p-link').value.trim(),
+    summary:document.getElementById('p-summary').value.trim()
+  };
+  if(eid){
+    const i=pubs.findIndex(p=>p.id===eid);
+    if(i>-1)pubs[i]={...pubs[i],...pd};
+    window._editPubId=null;
+  }else{
+    pubs.unshift({id:Date.now(),...pd});
+  }
+  savePubs(pubs);
+  clearPubForm();
+  showToast(eid?'פרסום עודכן ✓':'פרסום נשמר ✓');
+  showView('pubs');
+}
+
+function clearPubForm(){
+  ['p-title','p-org','p-date','p-link','p-summary'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  window._editPubId=null;
+}
+
+function editPub(id){
+  const pub=loadPubs().find(p=>p.id===id);if(!pub)return;
+  window._editPubId=id;
+  window._adminSection='pubs';
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-admin').classList.add('active');
+  document.querySelectorAll('#view-admin .form-card').forEach(el=>el.style.display='none');
+  document.getElementById('form-pubs').style.display='block';
+  ['grants','learning','pubs'].forEach(s=>{const t=document.getElementById('stab-'+s);if(t)t.classList.toggle('active',s==='pubs');});
+  document.getElementById('admin-title').textContent='עריכת פרסום';
+  document.getElementById('p-title').value=pub.title||'';
+  document.getElementById('p-org').value=pub.org||'';
+  document.getElementById('p-date').value=pub.date||'';
+  document.getElementById('p-link').value=pub.link||'';
+  document.getElementById('p-summary').value=pub.summary||'';
+}
+
+function deletePub(id){
+  showConfirm('האם למחוק פרסום זה?',()=>{
+    savePubs(loadPubs().filter(p=>p.id!==id));
+    renderPubs();
+    showToast('פרסום נמחק');
+  });
+}
+
+function renderPubs(){
+  const list=document.getElementById('pubs-list');if(!list)return;
+  const q=(document.getElementById('pubs-search')||{value:''}).value.trim().toLowerCase();
+  let pubs=loadPubs();
+  if(q)pubs=pubs.filter(p=>(p.title+p.org+p.summary).toLowerCase().includes(q));
+  if(!pubs.length){list.innerHTML='<div class="empty-state">אין פרסומים</div>';return;}
+  list.innerHTML=pubs.map(p=>`
+    <div class="grant-card">
+      <div class="grant-card-top">
+        <div>
+          <div class="grant-title">${p.title}</div>
+          <div class="grant-org">${p.org||''}</div>
+          ${p.date?`<div style="font-size:12px;color:var(--ink-light);margin-top:4px;">📅 ${fmtD(p.date)}</div>`:''}
+        </div>
+      </div>
+      ${p.summary?`<div style="font-size:13px;color:var(--ink-mid);line-height:1.7;margin:10px 0;">${p.summary}</div>`:''}
+      <div class="grant-footer" style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+        <div>
+          ${p.link?`<a class="grant-link" href="${p.link}" target="_blank">🔗 לפרסום המלא</a>`:''}
+        </div>
+        <div class="grant-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" onclick="editPub(${p.id})">עריכה</button>
+          <button class="btn-icon danger" onclick="deletePub(${p.id})">מחיקה</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
 
 // ======= CALENDAR =======
 let calYear=new Date().getFullYear();
@@ -1402,11 +1507,13 @@ function showView(name){
   if(name==='board')renderBoard();
   if(name==='cal')renderCal();
   if(name==='learning')renderLearning();
+  if(name==='pubs')renderPubs();
   if(name==='admin'){
     if(!window._editId&&!window._editLearnId){
       clearForm();
       clearLearningForm();
       initCatPillsForm([]);
+      clearPubForm();
     }
     setAdminSection(window._adminSection||'grants');
   }
@@ -1419,14 +1526,15 @@ function showAdminSection(sec){
 
 function setAdminSection(sec){
   window._adminSection=sec;
-  ['grants','learning'].forEach(s=>{
+  ['grants','learning','pubs'].forEach(s=>{
     const tab=document.getElementById('stab-'+s);
     if(tab)tab.classList.toggle('active',s===sec);
   });
   document.querySelectorAll('#view-admin .form-card').forEach(el=>{el.style.display='none';});
   if(sec==='learning'){const el=document.getElementById('form-learning');if(el)el.style.display='block';}
-  else{const el=document.querySelector('#view-admin .form-card:not(#form-news):not(#form-learning)');if(el)el.style.display='block';}
-  const titles={grants:window._editId?'עריכת קול קורא':'הזנת קול קורא חדש',learning:window._editLearnId?'עריכת אירוע למידה':'הזנת אירוע למידה חדש'};
+  else if(sec==='pubs'){const el=document.getElementById('form-pubs');if(el)el.style.display='block';}
+  else{const el=document.querySelector('#view-admin .form-card:not(#form-news):not(#form-learning):not(#form-pubs)');if(el)el.style.display='block';}
+  const titles={grants:window._editId?'עריכת קול קורא':'הזנת קול קורא חדש',learning:window._editLearnId?'עריכת אירוע למידה':'הזנת אירוע למידה חדש',pubs:window._editPubId?'עריכת פרסום':'הזנת פרסום חדש'};
   document.getElementById('admin-title').textContent=titles[sec]||'הזנה';
 }
 
