@@ -185,7 +185,7 @@
   </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showView('board')">קולות קוראים</button>
-    <button class="tab-btn" onclick="showView('learning')">הזדמנויות למידה</button>
+    <button class="tab-btn" onclick="showView('learning')">אירועי למידה</button>
     <button class="tab-btn" onclick="showView('pubs')">פרסומים</button>
     <button class="tab-btn" onclick="showView('cal')">יומן אירועים</button>
     <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
@@ -259,7 +259,7 @@
 <!-- LEARNING VIEW -->
 <div class="view" id="view-learning">
   <div class="page-header">
-    <div><div class="page-title">הזדמנויות למידה</div><div class="page-sub">וובינרים ואירועים מקצועיים</div></div>
+    <div><div class="page-title">אירועי למידה</div><div class="page-sub">וובינרים ואירועים מקצועיים</div></div>
 
   </div>
   <div class="filters">
@@ -968,7 +968,7 @@ function exportNewsletter(){
 
   // Learning section
   if(learns.length){
-    html+=`<div class="section-title">🎓 הזדמנויות למידה קרובות (${learns.length})</div><div class="content">`;
+    html+=`<div class="section-title">🎓 אירועי למידה קרובות (${learns.length})</div><div class="content">`;
     learns.forEach(item=>{
       html+=`<div class="learn-item">
         <div class="item-title">${item.title}</div>
