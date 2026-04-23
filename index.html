@@ -188,14 +188,14 @@
     <button class="tab-btn" onclick="showView('learning')">אירועי למידה</button>
     <button class="tab-btn" onclick="showView('pubs')">פרסומים</button>
     <button class="tab-btn" onclick="showView('cal')">יומן אירועים</button>
-    <button class="tab-btn" onclick="showView('admin')">+ הזנה</button>
+    <button class="tab-btn" onclick="requireAdmin(()=>showView('admin'))">+ הזנה</button>
   </div>
 </nav>
 
 <div class="view active" id="view-board">
   <div class="page-header">
     <div><div class="page-title">קולות קוראים פעילים</div><div class="page-sub" id="board-sub">טוען...</div></div>
-    <button class="btn-secondary" onclick="exportNewsletter()" style="font-size:13px;padding:7px 16px;white-space:nowrap;">📧 ייצוא לניוזלטר</button>
+    <button class="btn-secondary" onclick="requireAdmin(()=>exportNewsletter())" style="font-size:13px;padding:7px 16px;white-space:nowrap;">📧 ייצוא לניוזלטר</button>
   </div>
   <div class="stats-bar" id="stats-bar"></div>
   <div class="export-bar">
@@ -880,7 +880,8 @@ function clearPubForm(){
   window._editPubId=null;
 }
 
-function editPub(id){
+function editPub(id){requireAdmin(()=>_editPubInner(id));}
+function _editPubInner(id){
   const pub=loadPubs().find(p=>p.id===id);if(!pub)return;
   window._editPubId=id;
   window._adminSection='pubs';
@@ -927,7 +928,7 @@ function renderPubs(){
         </div>
         <div class="grant-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="editPub(${p.id})">עריכה</button>
-          <button class="btn-icon danger" onclick="deletePub(${p.id})">מחיקה</button>
+          <button class="btn-icon danger" onclick="requireAdmin(()=>deletePub(${p.id}))">מחיקה</button>
         </div>
       </div>
     </div>`).join('');
@@ -1412,8 +1413,8 @@ function renderLearning(){
         ${item.link?`<a class="grant-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">🔗 הרשמה</a>`:'<span></span>'}
         <div class="grant-actions" onclick="event.stopPropagation()">
           <button class="btn-share" onclick="event.stopPropagation();shareLearning(${item.id})">שיתוף ↗</button>
-          <button class="btn-icon" onclick="editLearning(${item.id})">עריכה</button>
-          <button class="btn-icon danger" onclick="deleteLearning(${item.id})">מחיקה</button>
+          <button class="btn-icon" onclick="editLearningOrig(${item.id})">עריכה</button>
+          <button class="btn-icon danger" onclick="requireAdmin(()=>deleteLearning(${item.id}))">מחיקה</button>
         </div>
       </div>
     </div>`;
@@ -1438,7 +1439,8 @@ function openLearnModal(id){
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function editLearning(id){
+function editLearningOrig(id){requireAdmin(()=>_editLearningInner(id));}
+function _editLearningInner(id){
   const item=loadLearn().find(x=>x.id===id);if(!item)return;
   window._editLearnId=id;
   window._adminSection='learning';
@@ -1768,7 +1770,8 @@ function saveGrant(){
   showView('board');
 }
 
-function editGrant(id){
+function editGrant(id){requireAdmin(()=>_editGrantInner(id));}
+function _editGrantInner(id){
   const g=load().find(x=>x.id===id);if(!g)return;
   showView('admin');
   document.getElementById('admin-title').textContent='עריכת קול קורא';
@@ -1820,7 +1823,7 @@ function clearForm(){
 
 
 // ======= ADMIN AUTH =======
-const ADMIN_PASS = 'funds';
+const ADMIN_PASS = 'מחוז';
 
 function requireAdmin(callback){
   if(window._isAdmin){callback();return;}
