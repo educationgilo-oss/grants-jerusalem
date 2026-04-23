@@ -1040,6 +1040,48 @@ function renderBoardLearning(){
 
 
 
+
+function exportAllData(){
+  const data={
+    grants: load(),
+    learning: loadLearn(),
+    pubs: loadPubs(),
+    exported: new Date().toISOString()
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='grants_data_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('הנתונים יוצאו בהצלחה ✓');
+}
+
+function importAllData(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.grants)save(data.grants);
+      if(data.learning)saveLearn2(data.learning);
+      if(data.pubs)savePubs(data.pubs);
+      renderBoard();
+      showToast('הנתונים יובאו בהצלחה ✓ — '+
+        (data.grants||[]).length+' קולות קוראים, '+
+        (data.learning||[]).length+' אירועים, '+
+        (data.pubs||[]).length+' פרסומים');
+    }catch(err){
+      showToast('שגיאה בייבוא: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
 function downloadNewsletter(){
   if(!window._newsletterHtml)return;
   const blob=new Blob([window._newsletterHtml],{type:'text/html;charset=utf-8'});
