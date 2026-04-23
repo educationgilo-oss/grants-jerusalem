@@ -194,11 +194,10 @@
 <div class="view active" id="view-board">
   <div class="page-header">
     <div><div class="page-title">קולות קוראים פעילים</div><div class="page-sub" id="board-sub">טוען...</div></div>
+    <button class="btn-secondary" onclick="exportNewsletter()" style="font-size:13px;padding:7px 16px;white-space:nowrap;">📧 ייצוא לניוזלטר</button>
   </div>
   <div class="stats-bar" id="stats-bar"></div>
   <div class="export-bar">
-    <button class="btn-export" onclick="exportExcel()">📊 ייצוא Excel</button>
-    <button class="btn-export" onclick="exportPDF()">📄 ייצוא PDF</button>
   </div>
   <!-- Row 1: Free text search -->
   <div style="margin-bottom:10px;">
@@ -327,7 +326,7 @@
         <input type="date" id="f-deadline">
       </div>
       <div class="form-group">
-        <label>סכום מימון (₪)</label>
+        <label>סכום מקסימלי למימון (₪)</label>
         <input type="number" id="f-amount" placeholder="150000">
       </div>
       <div class="form-group">
@@ -631,7 +630,7 @@ function renderSummaryPreview(sum){
 
 function renderStats(grants){
   const active=grants.filter(g=>du(g.deadline)>=0);
-  const urgent=active.filter(g=>du(g.deadline)<=14);
+  const urgent=active.filter(g=>du(g.deadline)<=7);
   const total=grants.filter(g=>g.amount).reduce((s,g)=>s+Number(g.amount),0);
   document.getElementById('stats-bar').innerHTML=`
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">קולות קוראים פעילים</div></div>
@@ -657,7 +656,7 @@ function renderBoard(){
   if(!f.length){list.innerHTML='<div class="empty-state">לא נמצאו קולות קוראים</div>';return;}
   renderBoardLearning();
   list.innerHTML=f.map(g=>{
-    const d=du(g.deadline),urg=d>=0&&d<=14;
+    const d=du(g.deadline),urg=d>=0&&d<=7;
     const dl=d<0?'פג תוקף':d===0?'היום!':d===1?'מחר!':`${d} ימים`;
     return`<div class="grant-card${urg?' urgent-card':''}" onclick="openModal(${g.id})">
       <div class="grant-card-top">
@@ -799,6 +798,79 @@ function renderBoardLearning(){
   }).join('');
 }
 
+
+function exportNewsletter(){
+  const grants=load().filter(g=>du(g.deadline)>=0).sort((a,b)=>b.id-a.id);
+  if(!grants.length){showToast('אין קולות קוראים פעילים');return;}
+  
+  const today=new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
+  
+  let html=`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font-family:Arial,sans-serif;background:#f5f5f0;margin:0;padding:20px;direction:rtl;}
+  .container{max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);}
+  .header{background:#5C6B3A;color:white;padding:28px 32px;text-align:center;}
+  .header h1{margin:0 0 6px;font-size:22px;}
+  .header p{margin:0;opacity:.85;font-size:14px;}
+  .content{padding:24px 32px;}
+  .grant-item{border:1px solid #DDE2D0;border-radius:8px;padding:20px;margin-bottom:16px;}
+  .grant-title{font-size:16px;font-weight:700;color:#1E2218;margin-bottom:6px;}
+  .grant-org{font-size:13px;color:#6B7458;margin-bottom:10px;}
+  .grant-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .cat-tag{background:#EEF1E6;color:#5C6B3A;border-radius:12px;padding:3px 10px;font-size:12px;}
+  .grant-deadline{font-size:13px;color:#B5553A;font-weight:600;margin-bottom:10px;}
+  .grant-amount{font-size:13px;color:#1E2218;margin-bottom:12px;}
+  .grant-summary{font-size:13px;color:#3A4030;line-height:1.7;margin-bottom:14px;border-right:3px solid #5C6B3A;padding-right:12px;}
+  .btn-link{display:inline-block;background:#5C6B3A;color:white;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:13px;margin-left:8px;}
+  .btn-link-outline{display:inline-block;border:1px solid #5C6B3A;color:#5C6B3A;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:13px;}
+  .footer{background:#EEF1E6;padding:20px 32px;text-align:center;font-size:12px;color:#6B7458;}
+</style></head>
+<body><div class="container">
+<div class="header">
+  <h1>פיתוח משאבים | מחוז ירושלים</h1>
+  <p>קולות קוראים פעילים — ${today}</p>
+</div>
+<div class="content">`;
+
+  grants.forEach((g,i)=>{
+    const cats=(g.cat||'').split(',').map(c=>c.trim()).filter(Boolean);
+    const deadlineDays=du(g.deadline);
+    const urgent=deadlineDays<=7;
+    html+=`<div class="grant-item">
+      <div class="grant-title">${g.title}</div>
+      <div class="grant-org">${g.org||''}</div>
+      ${cats.length?`<div class="grant-cats">${cats.map(c=>`<span class="cat-tag">${c}</span>`).join('')}</div>`:''}
+      <div class="grant-deadline">📅 מועד אחרון: ${fmtD(g.deadline)}${urgent?' — דחוף!':''}</div>
+      ${g.amount?`<div class="grant-amount">💰 היקף: ${fmtA(g.amount)}</div>`:''}
+      ${g.summary?`<div class="grant-summary">${g.summary.replace(/\n/g,'<br>').replace(/^🏛️[^\n]*/,'')}</div>`:''}
+      <div>
+        ${g.link?`<a class="btn-link" href="${g.link}" target="_blank">לפרטים והגשה ←</a>`:''}
+        ${g.docLink?`<a class="btn-link-outline" href="${g.docLink}" target="_blank">📄 מסמך מלא</a>`:''}
+      </div>
+    </div>`;
+  });
+
+  html+=`</div>
+<div class="footer">פיתוח משאבים | מחוז ירושלים • 40 מרכזים קהילתיים</div>
+</div></body></html>`;
+
+  // Show in new window for copy
+  const win=window.open('','_blank','width=700,height=800');
+  win.document.write(`<html><head><title>ניוזלטר</title></head><body style="margin:0;direction:rtl;font-family:Arial;">
+    <div style="background:#5C6B3A;color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:700;font-size:15px;">ניוזלטר מוכן לשליחה</span>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.execCommand('selectAll');document.execCommand('copy');alert('הועתק! הדביקי לגוף המייל')" style="background:white;color:#5C6B3A;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:Arial;font-weight:700;">העתק הכל</button>
+        <button onclick="window.print()" style="background:none;border:1px solid white;color:white;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:Arial;">הדפס</button>
+      </div>
+    </div>
+    <iframe srcdoc="${html.replace(/"/g,'&quot;')}" style="width:100%;height:calc(100vh - 60px);border:none;"></iframe>
+  </body></html>`);
+  win.document.close();
+}
+
 function renderCalendar(){
   const grants=load().filter(g=>du(g.deadline)>=0).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
   const grid=document.getElementById('calendar-grid');
@@ -810,7 +882,7 @@ function renderCalendar(){
     const d=du(g.deadline);
     html+=`<div class="cal-row">
       <div class="cal-date">${fmtD(g.deadline)}</div>
-      <div class="cal-bar${d<=14?' urgent':''}" style="width:${Math.min(100,Math.max(6,d))}px"></div>
+      <div class="cal-bar${d<=7?' urgent':''}" style="width:${Math.min(100,Math.max(6,d))}px"></div>
       <div style="flex:1"><div class="cal-title">${g.title}</div><div class="cal-org">${g.org} · ${d===0?'היום':d+' ימים'}</div></div>
       ${g.link?`<a class="grant-link" href="${g.link}" target="_blank" style="font-size:12px">קישור</a>`:''}
     </div>`;
@@ -829,7 +901,7 @@ function openModal(id){
     <div class="grant-badges" style="margin-bottom:1rem">
       <span class="badge badge-cat">${g.cat}</span>
       ${g.amount?`<span class="badge badge-amount">${fmtA(g.amount)}</span>`:''}
-      ${d<=14?`<span class="badge badge-urgent">דחוף – ${d} ימים</span>`:''}
+      ${d<=7?`<span class="badge badge-urgent">דחוף – ${d} ימים</span>`:''}
     </div>
     <hr class="modal-divider">
     ${g.summary?`<div class="modal-summary">${g.summary}</div>`:'<div style="font-size:13px;color:var(--ink-light)">אין סיכום — ניתן להוסיף בעריכה</div>'}
@@ -890,19 +962,46 @@ async function runSummarize(){
     }else if(activeTab==='url'){
       status.textContent='מביא תוכן מהדף...';
       // Step 1: fetch page content via web_search
+      const apiKeyUrl=getApiKey();
+      if(!apiKeyUrl){showToast('נא להזין מפתח API');status.textContent='חסר מפתח API';btn.disabled=false;lbl.style.display='inline';spin.style.display='none';return;}
       const fetchRes=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKeyUrl,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({
           model:'claude-haiku-4-5-20251001',max_tokens:2000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages:[{role:'user',content:'גש לכתובת הבאה והחזר את הטקסט המלא שלה, ללא עיצוב: '+urlVal}]
+          messages:[{role:'user',content:PROMPT+'\n\n---\nגש לקישור הבא וחלץ את פרטי קול הקורא: '+urlVal}]
         })
       });
       const fetchData=await fetchRes.json();
-      const pageText=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n');
-      if(!pageText)throw new Error('לא הצלחתי לגשת לדף');
-      // Step 2: summarize the fetched content
-      messages=[{role:'user',content:PROMPT+'\n\n---\nURL המקור: '+urlVal+'\n\n'+pageText}];
+      if(fetchData.error)throw new Error(fetchData.error.message||'שגיאת API');
+      // Try to parse JSON directly from response
+      const textBlocks=(fetchData.content||[]).filter(c=>c.type==='text').map(c=>c.text);
+      if(textBlocks.length>0){
+        try{
+          let clean=textBlocks[0].replace(/```json/g,'').replace(/```/g,'').trim();
+          const s=clean.indexOf('{');const e=clean.lastIndexOf('}');
+          if(s>=0&&e>=0)clean=clean.slice(s,e+1);
+          const parsed2=JSON.parse(clean);
+          if(parsed2.title)document.getElementById('f-title').value=parsed2.title;
+          if(parsed2.org)document.getElementById('f-org').value=parsed2.org;
+          if(parsed2.deadline)document.getElementById('f-deadline').value=parsed2.deadline;
+          if(parsed2.amount)document.getElementById('f-amount').value=parsed2.amount;
+          if(parsed2.link)document.getElementById('f-link').value=parsed2.link;
+          else document.getElementById('f-link').value=urlVal;
+          if(parsed2.cat){const cats=parsed2.cat.split(',').map(c=>c.trim()).filter(Boolean);initCatPillsForm(cats);}
+          if(parsed2.summary){document.getElementById('f-result-text').textContent=parsed2.summary;document.getElementById('f-result-area').style.display='block';window._pendingSum=parsed2.summary;}
+          status.textContent='✓ הטופס מולא אוטומטית';
+          showToast('הטופס מולא אוטומטית ✓');
+          btn.disabled=false;lbl.style.display='inline';spin.style.display='none';
+          return;
+        }catch(e2){
+          const pageText=textBlocks.join('\n');
+          messages=[{role:'user',content:PROMPT+'\n\n---\nURL המקור: '+urlVal+'\n\n'+pageText}];
+        }
+      }else{
+        messages=[{role:'user',content:PROMPT+'\n\n---\nURL: '+urlVal}];
+      }
     }else{
       messages=[{role:'user',content:PROMPT+'\n\n---\n'+raw}];
     }
