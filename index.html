@@ -612,7 +612,10 @@
 
 <div class="login-overlay" id="login-overlay">
   <div class="login-box">
-    <h3>🔒 כניסת אדמין</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <h3 style="margin:0;">🔒 כניסת אדמין</h3>
+      <button onclick="document.getElementById('login-overlay').classList.remove('open');window._adminCallback=null;" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-light);line-height:1;">✕</button>
+    </div>
     <p>הזיני סיסמה כדי לגשת לאזור ההזנה והעריכה</p>
     <input type="password" id="login-input" placeholder="סיסמה" onkeydown="if(event.key==='Enter')checkLogin()">
     <div class="login-error" id="login-error"></div>
@@ -1834,10 +1837,11 @@ function requireAdmin(callback){
 }
 
 function checkLogin(){
-  const val=document.getElementById('login-input').value;
+  const val=document.getElementById('login-input').value.trim();
   if(val===ADMIN_PASS){
     window._isAdmin=true;
     document.getElementById('login-overlay').classList.remove('open');
+    document.getElementById('login-error').textContent='';
     if(window._adminCallback){window._adminCallback();window._adminCallback=null;}
   }else{
     document.getElementById('login-error').textContent='סיסמה שגויה, נסי שוב';
