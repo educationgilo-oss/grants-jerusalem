@@ -801,7 +801,7 @@ function renderBoardLearning(){
 
 function exportNewsletter(){
   const grants=load().filter(g=>du(g.deadline)>=0).sort((a,b)=>b.id-a.id);
-  if(!grants.length){showToast('אין קולות קוראים פעילים');return;}
+  const learns=loadLearn().filter(i=>du(i.date)>=0).sort((a,b)=>new Date(a.date)-new Date(b.date));
   
   const today=new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
   
@@ -810,50 +810,75 @@ function exportNewsletter(){
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   body{font-family:Arial,sans-serif;background:#f5f5f0;margin:0;padding:20px;direction:rtl;}
-  .container{max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);}
+  .container{max-width:620px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);}
   .header{background:#5C6B3A;color:white;padding:28px 32px;text-align:center;}
   .header h1{margin:0 0 6px;font-size:22px;}
   .header p{margin:0;opacity:.85;font-size:14px;}
-  .content{padding:24px 32px;}
+  .section-title{font-size:18px;font-weight:700;color:#5C6B3A;padding:20px 32px 10px;border-bottom:2px solid #EEF1E6;margin-bottom:0;}
+  .content{padding:20px 32px;}
   .grant-item{border:1px solid #DDE2D0;border-radius:8px;padding:20px;margin-bottom:16px;}
-  .grant-title{font-size:16px;font-weight:700;color:#1E2218;margin-bottom:6px;}
-  .grant-org{font-size:13px;color:#6B7458;margin-bottom:10px;}
-  .grant-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .learn-item{border:1px solid #D0D3F0;border-radius:8px;padding:20px;margin-bottom:16px;border-right:4px solid #3A6B8A;}
+  .item-title{font-size:16px;font-weight:700;color:#1E2218;margin-bottom:4px;}
+  .item-org{font-size:13px;color:#6B7458;margin-bottom:8px;}
+  .item-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .cat-tag{background:#EEF1E6;color:#5C6B3A;border-radius:12px;padding:3px 10px;font-size:12px;}
-  .grant-deadline{font-size:13px;color:#B5553A;font-weight:600;margin-bottom:10px;}
-  .grant-amount{font-size:13px;color:#1E2218;margin-bottom:12px;}
-  .grant-summary{font-size:13px;color:#3A4030;line-height:1.7;margin-bottom:14px;border-right:3px solid #5C6B3A;padding-right:12px;}
+  .item-meta{font-size:13px;color:#B5553A;font-weight:600;margin-bottom:8px;}
+  .item-amount{font-size:13px;color:#1E2218;margin-bottom:10px;}
+  .item-summary{font-size:13px;color:#3A4030;line-height:1.8;margin-bottom:14px;white-space:pre-line;}
   .btn-link{display:inline-block;background:#5C6B3A;color:white;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:13px;margin-left:8px;}
+  .btn-link-blue{display:inline-block;background:#3A6B8A;color:white;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:13px;margin-left:8px;}
   .btn-link-outline{display:inline-block;border:1px solid #5C6B3A;color:#5C6B3A;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:13px;}
   .footer{background:#EEF1E6;padding:20px 32px;text-align:center;font-size:12px;color:#6B7458;}
 </style></head>
 <body><div class="container">
 <div class="header">
   <h1>פיתוח משאבים | מחוז ירושלים</h1>
-  <p>קולות קוראים פעילים — ${today}</p>
-</div>
-<div class="content">`;
+  <p>${today}</p>
+</div>`;
 
-  grants.forEach((g,i)=>{
-    const cats=(g.cat||'').split(',').map(c=>c.trim()).filter(Boolean);
-    const deadlineDays=du(g.deadline);
-    const urgent=deadlineDays<=7;
-    html+=`<div class="grant-item">
-      <div class="grant-title">${g.title}</div>
-      <div class="grant-org">${g.org||''}</div>
-      ${cats.length?`<div class="grant-cats">${cats.map(c=>`<span class="cat-tag">${c}</span>`).join('')}</div>`:''}
-      <div class="grant-deadline">📅 מועד אחרון: ${fmtD(g.deadline)}${urgent?' — דחוף!':''}</div>
-      ${g.amount?`<div class="grant-amount">💰 היקף: ${fmtA(g.amount)}</div>`:''}
-      ${g.summary?`<div class="grant-summary">${g.summary.replace(/\n/g,'<br>').replace(/^🏛️[^\n]*/,'')}</div>`:''}
-      <div>
-        ${g.link?`<a class="btn-link" href="${g.link}" target="_blank">לפרטים והגשה ←</a>`:''}
-        ${g.docLink?`<a class="btn-link-outline" href="${g.docLink}" target="_blank">📄 מסמך מלא</a>`:''}
-      </div>
-    </div>`;
-  });
+  // Grants section
+  if(grants.length){
+    html+=`<div class="section-title">📋 קולות קוראים פעילים (${grants.length})</div><div class="content">`;
+    grants.forEach(g=>{
+      const cats=(g.cat||'').split(',').map(c=>c.trim()).filter(Boolean);
+      const deadlineDays=du(g.deadline);
+      const urgent=deadlineDays<=7;
+      const summaryClean=g.summary?g.summary.replace(/^🏛️[^
+]*/,'').trim():'';
+      html+=`<div class="grant-item">
+        <div class="item-title">${g.title}</div>
+        <div class="item-org">${g.org||''}</div>
+        ${cats.length?`<div class="item-cats">${cats.map(c=>`<span class="cat-tag">${c}</span>`).join('')}</div>`:''}
+        <div class="item-meta">📅 מועד אחרון: ${fmtD(g.deadline)}${urgent?' — דחוף!':''}</div>
+        ${g.amount?`<div class="item-amount">💰 סכום מקסימלי: ${fmtA(g.amount)}</div>`:''}
+        ${summaryClean?`<div class="item-summary">${summaryClean}</div>`:''}
+        <div>
+          ${g.link?`<a class="btn-link" href="${g.link}" target="_blank">לפרטים והגשה ←</a>`:''}
+          ${g.docLink?`<a class="btn-link-outline" href="${g.docLink}" target="_blank">📄 מסמך מלא</a>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
 
-  html+=`</div>
-<div class="footer">פיתוח משאבים | מחוז ירושלים • 40 מרכזים קהילתיים</div>
+  // Learning section
+  if(learns.length){
+    html+=`<div class="section-title">🎓 הזדמנויות למידה קרובות (${learns.length})</div><div class="content">`;
+    learns.forEach(item=>{
+      html+=`<div class="learn-item">
+        <div class="item-title">${item.title}</div>
+        <div class="item-org">${item.org||''}</div>
+        <div class="item-meta">📅 ${fmtD(item.date)}${item.time?' | 🕐 '+item.time:''} | ${item.format||''}</div>
+        ${item.summary?`<div class="item-summary">${item.summary}</div>`:''}
+        <div>
+          ${item.link?`<a class="btn-link-blue" href="${item.link}" target="_blank">להרשמה ←</a>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  html+=`<div class="footer">פיתוח משאבים | מחוז ירושלים • 40 מרכזים קהילתיים</div>
 </div></body></html>`;
 
   // Show in new window for copy
