@@ -698,11 +698,10 @@ function renderSummaryPreview(sum){
 function renderStats(grants){
   const active=grants.filter(g=>du(g.deadline)>=0);
   const urgent=active.filter(g=>du(g.deadline)<=7);
-  const total=grants.filter(g=>g.amount).reduce((s,g)=>s+Number(g.amount),0);
   document.getElementById('stats-bar').innerHTML=`
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">קולות קוראים פעילים</div></div>
     <div class="stat-card urgent"><div class="stat-num">${loadLearn().filter(i=>du(i.date)>=0).length}</div><div class="stat-label">אירועי למידה</div></div>
-    <div class="stat-card gold"><div class="stat-num">${total?'₪'+(total/1000000).toFixed(1)+'M':'—'}</div><div class="stat-label">פוטנציאל מימון</div></div>`;
+`;
   document.getElementById('board-sub').textContent=`${active.length} קולות קוראים פעילים`;
 }
 
@@ -1868,6 +1867,9 @@ function openShareModal(title, text, link){
   const subject = encodeURIComponent(title);
   const body = encodeURIComponent(text);
   const wa = encodeURIComponent(text);
+  const enc = encodeURIComponent(text);
+  const mailUrl = 'mailto:?subject='+subject+'&body='+body;
+  const waUrl = 'https://wa.me/?text='+wa;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-header">
       <div><div class="grant-title">שיתוף</div><div class="grant-org" style="margin-top:4px">${title}</div></div>
@@ -1876,15 +1878,15 @@ function openShareModal(title, text, link){
     <hr class="modal-divider">
     <div style="font-size:13px;color:var(--ink-mid);margin-bottom:12px;">בחרי איך לשתף:</div>
     <div class="share-modal-btns">
-      <button class="share-btn-opt" onclick="window.open('mailto:?subject=${subject}&body=${body}','_blank')">
+      <button class="share-btn-opt" onclick="window.open('${mailUrl}','_blank')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C6B3A" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
         שליחה במייל
       </button>
-      <button class="share-btn-opt" onclick="window.open('https://wa.me/?text=${wa}','_blank')">
+      <button class="share-btn-opt" onclick="window.open('${waUrl}','_blank')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.852L0 24l6.335-1.51A11.933 11.933 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.371l-.36-.214-3.732.89.925-3.63-.235-.374A9.818 9.818 0 1 1 12 21.818z"/></svg>
         שליחה בוואטסאפ
       </button>
-      <button class="share-btn-opt" id="copy-share-btn" onclick="copyShareText('${encodeURIComponent(text)}')">
+      <button class="share-btn-opt" onclick="copyShareText('${enc}')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C6B3A" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         העתקה ללוח
       </button>
