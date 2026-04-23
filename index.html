@@ -978,8 +978,7 @@ function exportNewsletter(){
       const cats=(g.cat||'').split(',').map(c=>c.trim()).filter(Boolean);
       const deadlineDays=du(g.deadline);
       const urgent=deadlineDays<=7;
-      const summaryClean=g.summary?g.summary.replace(/^🏛️[^
-]*/,'').trim():'';
+      const summaryClean=g.summary?g.summary.split('\n').filter(l=>!l.match(/^🏛️/)).join('\n').trim():'';
       html+=`<div class="grant-item">
         <div class="item-title">${g.title}</div>
         <div class="item-org">${g.org||''}</div>
