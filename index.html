@@ -543,6 +543,36 @@
       <button class="btn-secondary" onclick="clearLearningForm()">נקה</button>
     </div>
   </div>
+
+  <!-- PUBLICATIONS FORM -->
+  <div class="form-card" id="form-pubs" style="display:none;max-width:720px;">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>שם הפרסום <span class="req">*</span></label>
+        <input type="text" id="p-title" placeholder="שם המאמר / הדוח / החוזר">
+      </div>
+      <div class="form-group">
+        <label>גוף מפרסם</label>
+        <input type="text" id="p-org" placeholder="שם הגוף המפרסם">
+      </div>
+      <div class="form-group">
+        <label>תאריך פרסום</label>
+        <input type="date" id="p-date">
+      </div>
+      <div class="form-group full">
+        <label>קישור למסמך המלא</label>
+        <input type="url" id="p-link" placeholder="https://... (קישור לאתר, OneDrive וכו')">
+      </div>
+      <div class="form-group full">
+        <label>תקציר</label>
+        <textarea id="p-summary" style="min-height:100px;" placeholder="תקציר קצר של הפרסום..."></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" onclick="savePub()">שמור פרסום</button>
+      <button class="btn-secondary" onclick="clearPubForm()">נקה</button>
+    </div>
+  </div>
 </div>
 
 
@@ -650,7 +680,7 @@ function renderStats(grants){
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">קולות קוראים פעילים</div></div>
     <div class="stat-card urgent"><div class="stat-num">${loadLearn().filter(i=>du(i.date)>=0).length}</div><div class="stat-label">אירועי למידה</div></div>
     <div class="stat-card gold"><div class="stat-num">${total?'₪'+(total/1000000).toFixed(1)+'M':'—'}</div><div class="stat-label">פוטנציאל מימון</div></div>`;
-  document.getElementById('board-sub').textContent=`${active.length} הזדמנויות פעילות`;
+  document.getElementById('board-sub').textContent=`${active.length} קולות קוראים פעילים`;
 }
 
 function populateCats(){}
