@@ -1065,7 +1065,8 @@ function exportNewsletter(){
   
   let html=`<!DOCTYPE html>
 <html dir="rtl" lang="he">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<head><meta charset="UTF-8">
+<meta name="Generator" content="Microsoft Word"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   body{font-family:Arial,sans-serif;background:#f5f5f0;margin:0;padding:20px;direction:rtl;}
   .container{max-width:620px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);}
@@ -1108,7 +1109,7 @@ function exportNewsletter(){
         ${cats.length?`<div class="item-cats">${cats.map(c=>`<span class="cat-tag">${c}</span>`).join('')}</div>`:''}
         <div class="item-meta">📅 מועד אחרון: ${fmtD(g.deadline)}${urgent?' — דחוף!':''}</div>
         ${g.amount?`<div class="item-amount">💰 סכום מקסימלי: ${fmtA(g.amount)}</div>`:''}
-        ${summaryClean?`<div class="item-summary">${summaryClean}</div>`:''}
+        ${summaryClean?`<div class="item-summary">${summaryClean.split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:4px 0;">${l}</p>`).join('')}</div>`:''}
         <div>
           ${g.link?`<a class="btn-link" href="${g.link}" target="_blank">לפרטים והגשה ←</a>`:''}
           ${g.docLink?`<a class="btn-link-outline" href="${g.docLink}" target="_blank">📄 מסמך מלא</a>`:''}
@@ -1126,7 +1127,7 @@ function exportNewsletter(){
         <div class="item-title">${item.title}</div>
         <div class="item-org">${item.org||''}</div>
         <div class="item-meta">📅 ${fmtD(item.date)}${item.time?' | 🕐 '+item.time:''} | ${item.format||''}</div>
-        ${item.summary?`<div class="item-summary">${item.summary}</div>`:''}
+        ${item.summary?`<div class="item-summary">${item.summary.split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:4px 0;">${l}</p>`).join('')}</div>`:''}
         <div>
           ${item.link?`<a class="btn-link-blue" href="${item.link}" target="_blank">להרשמה ←</a>`:''}
         </div>
