@@ -188,14 +188,13 @@
     <button class="tab-btn" onclick="showView('learning')">אירועי למידה</button>
     <button class="tab-btn" onclick="showView('pubs')">פרסומים</button>
     <button class="tab-btn" onclick="showView('cal')">יומן אירועים</button>
-    <button class="tab-btn" onclick="requireAdmin(()=>showView('admin'))">+ הזנה</button>
+    <button class="tab-btn" onclick="requireAdmin(()=>showView('admin'))">כניסת Admin</button>
   </div>
 </nav>
 
 <div class="view active" id="view-board">
   <div class="page-header">
     <div><div class="page-title">קולות קוראים פעילים</div><div class="page-sub" id="board-sub">טוען...</div></div>
-    <button class="btn-secondary" onclick="requireAdmin(()=>exportNewsletter())" style="font-size:13px;padding:7px 16px;white-space:nowrap;">📧 ייצוא לניוזלטר</button>
   </div>
   <div class="stats-bar" id="stats-bar"></div>
   <div class="export-bar">
@@ -326,14 +325,9 @@
         <label>גוף מממן <span class="req">*</span></label>
         <input type="text" id="f-org" placeholder="שם הארגון / הקרן">
       </div>
-      <div class="form-group">
-        <label>קטגוריה</label>
-        <select id="f-cat">
-          <option>קהילה</option><option>ילדים</option><option>נוער</option><option>חינוך</option>
-          <option>נשים</option><option>ספורט</option><option>קיימות</option><option>גיל שלישי</option>
-          <option>צמי"ד</option><option>חברה ערבית</option><option>חברה חרדית</option><option>תרבות</option>
-          <option>עולים</option><option>שיפוץ ובינוי</option><option>יהדות ומורשת</option><option>אחר</option>
-        </select>
+      <div class="form-group full">
+        <label>קטגוריות (ניתן לבחור מספר)</label>
+        <div id="cat-pills-form" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;min-height:36px;"></div>
       </div>
       <div class="form-group">
         <label>תאריך הגשה אחרון <span class="req">*</span></label>
@@ -1778,12 +1772,11 @@ function _editGrantInner(id){
   showView('admin');
   document.getElementById('admin-title').textContent='עריכת קול קורא';
   window._editId=id;window._pendingSum=g.summary||null;
-  const savedCats=g.cat?g.cat.split(', ').map(c=>c.trim()).filter(Boolean):[];
-  initCatPillsForm(savedCats);
   document.getElementById('f-title').value=g.title;
   document.getElementById('f-org').value=g.org;
   document.getElementById('f-deadline').value=g.deadline;
-  document.getElementById('f-cat').value=g.cat;
+  const savedCats=g.cat?g.cat.split(',').map(c=>c.trim()).filter(Boolean):[];
+  initCatPillsForm(savedCats);
   document.getElementById('f-amount').value=g.amount||'';
   document.getElementById('f-link').value=g.link||'';
   document.getElementById('f-doc-link').value=g.docLink||'';
@@ -1802,9 +1795,11 @@ function _editGrantInner(id){
 
 function deleteGrant(id){
   showConfirm('האם למחוק קול קורא זה?', ()=>{
-    save(load().filter(g=>g.id!==id));
-    renderBoard();
-    showToast('קול קורא נמחק');
+    requireAdmin(()=>{
+      save(load().filter(g=>g.id!==id));
+      renderBoard();
+      showToast('קול קורא נמחק');
+    });
   });
 }
 
@@ -1812,7 +1807,7 @@ function clearForm(){
   ['f-title','f-org','f-deadline','f-amount','f-link','f-doc-link','f-raw'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  const fcat=document.getElementById('f-cat');if(fcat)fcat.selectedIndex=0;
+  initCatPillsForm([]);
   const pfn=document.getElementById('pdf-fname');if(pfn)pfn.textContent='';
   const ara=document.getElementById('ai-result-area');if(ara)ara.style.display='none';
   const ss=document.getElementById('sum-status');if(ss)ss.textContent='';
@@ -1935,6 +1930,7 @@ function confirmNo(){
 }
 document.addEventListener("DOMContentLoaded",function(){
   window._openOnly=false;
+  initCatPillsForm([]);
   renderBoard();
   const savedKey=localStorage.getItem('anthropic_api_key');
   if(savedKey){const keyInput=document.getElementById('anthropic-api-key');if(keyInput)keyInput.value=savedKey;}
